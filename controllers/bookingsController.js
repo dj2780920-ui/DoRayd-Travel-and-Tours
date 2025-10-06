@@ -40,11 +40,7 @@ export const getAllBookings = async (req, res) => {
         })
         .populate('user', 'firstName lastName')
         .sort({ createdAt: -1 });
-
-    // Filter out bookings with null populated fields
-    const validBookings = bookings.filter(booking => booking.itemId);
-
-    res.json({ success: true, data: validBookings });
+    res.json({ success: true, data: bookings });
   } catch (error) {
     console.error('Error fetching all bookings:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -54,14 +50,11 @@ export const getAllBookings = async (req, res) => {
 // Get bookings for the currently authenticated user
 export const getMyBookings = async (req, res) => {
     try {
+        // UPDATED: Removed 'archived: false' from the query
         const bookings = await Booking.find({ user: req.user.id })
             .populate('itemId')
             .sort({ createdAt: -1 });
-        
-        // Filter out bookings with null populated fields
-        const validBookings = bookings.filter(booking => booking.itemId);
-
-        res.json({ success: true, data: validBookings });
+        res.json({ success: true, data: bookings });
     } catch (error) {
         console.error('Error fetching user bookings:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -84,9 +77,7 @@ export const createBooking = async (req, res) => {
         const finalFirstName = isUserLoggedIn ? req.user.firstName : firstName;
         const finalLastName = isUserLoggedIn ? req.user.lastName : lastName;
         const finalEmail = isUserLoggedIn ? req.user.email : email;
-        
-        // Prioritize the phone number from the form, fallback to user profile
-        const finalPhone = phone || (isUserLoggedIn ? req.user.phone : '');
+        const finalPhone = isUserLoggedIn ? req.user.phone : phone;
 
         if (!itemType || !itemId || !startDate) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -94,15 +85,15 @@ export const createBooking = async (req, res) => {
 
         const item = itemType === 'car' ? await Car.findById(itemId) : await Tour.findById(itemId);
         if (!item || !item.isAvailable) {
-            return res.status(404).json({ success: false, message: 'Item not found or not available.' });
+            return res.status(400).json({ success: false, message: 'Selected item is not available' });
         }
 
         let coords = null;
         if (dropoffCoordinates) {
             try {
                 coords = typeof dropoffCoordinates === 'string' ? JSON.parse(dropoffCoordinates) : dropoffCoordinates;
-            } catch (e) {
-                console.error("Could not parse dropoffCoordinates:", dropoffCoordinates);
+            } catch (error) {
+                console.error('Invalid dropoff coordinates:', error);
             }
         }
 
@@ -169,8 +160,11 @@ export const updateBookingStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    // Send automatic email for approved/rejected bookings
     try {
-        await EmailService.sendStatusUpdate(booking);
+        if (status === 'confirmed' || status === 'rejected') {
+            await EmailService.sendStatusUpdate(booking);
+        }
     } catch (emailError) {
         console.error('Failed to send status update email:', emailError);
     }
@@ -211,6 +205,6 @@ export const uploadPaymentProof = async (req, res) => {
 
     } catch (error) {
         console.error('Error uploading payment proof:', error);
-        res.status(500).json({ success: false, message: 'Server error during upload.' });
+        res.status(500).json({ success: false, message: 'Failed to upload payment proof.' });
     }
 };

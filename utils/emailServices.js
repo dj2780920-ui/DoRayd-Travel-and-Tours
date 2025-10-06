@@ -1,222 +1,283 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+dotenv.config(); // Ensure .env variables are loaded
 
 class EmailService {
   constructor() {
-    this.isReady = false;
     this.transporter = null;
-    // Store the initialization promise so we can await it later
-    this.ready = this.initializeTransporter();
+    this.isInitialized = false;
   }
 
-  // Initialize the email transporter
   async initializeTransporter() {
     try {
-      console.log('🔧 Initializing EmailService...');
-      console.log('EMAIL_USER:', process.env.EMAIL_USER);
-      console.log('EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
-
-      // Check if credentials exist
+      // Ensure credentials are defined before creating the transporter
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.error('❌ Missing EMAIL_USER or EMAIL_PASS in .env file');
-        return;
+        throw new Error('Missing email credentials in environment variables');
       }
 
-      // Create the transporter
       this.transporter = nodemailer.createTransport({
         service: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // use SSL for Gmail
         auth: {
           user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
+          pass: process.env.EMAIL_PASS,
         },
-        logger: true, // log SMTP conversation
-        debug: true   // show detailed logs
       });
 
-      // Verify the transporter connection
-      console.log('🧪 Testing email connection...');
+      // Verify connection to Gmail
       await this.transporter.verify();
-      console.log('✅ Email service is ready');
-      this.isReady = true;
+      this.isInitialized = true;
+      console.log('✅ Email service initialized successfully');
     } catch (error) {
-      console.error('❌ Email service configuration error:', error.message);
-      this.isReady = false;
-      this.transporter = null;
+      console.error('❌ Email service initialization failed:', error.message);
+      this.isInitialized = false;
     }
   }
 
-  // Send password reset email
-  async sendPasswordReset(email, resetUrl) {
-    await this.ready; // Ensure transporter is ready
+  async reinitialize() {
+    console.log('🔄 Reinitializing email service...');
+    this.isInitialized = false;
+    this.transporter = null;
+    await this.initializeTransporter();
+  }
 
-    if (!this.isReady || !this.transporter) {
-      throw new Error('Email service is not properly configured');
+  isServiceReady() {
+    return this.isInitialized && this.transporter !== null;
+  }
+
+  async ensureReady() {
+    if (!this.isServiceReady()) {
+      await this.initializeTransporter();
     }
+    if (!this.isServiceReady()) {
+      throw new Error('Email service is not available');
+    }
+  }
 
+  async sendPasswordReset(email, resetUrl) {
     try {
+      await this.ensureReady();
+
       const mailOptions = {
         from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Password Reset Request',
         html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center;">
-              <h1 style="color: #007bff; margin: 0;">DoRayd Travel & Tours</h1>
-            </div>
-            <div style="padding: 30px 20px;">
-              <h2 style="color: #333;">Password Reset Request</h2>
-              <p style="color: #666; font-size: 16px;">
-                You requested a password reset for your account. Click the button below to create a new password.
-              </p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${resetUrl}" 
-                   style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-                  Reset My Password
-                </a>
-              </div>
-              <p style="color: #888; font-size: 14px;">
-                <strong>Important:</strong> This link is valid for only 10 minutes for security reasons.
-              </p>
-              <p style="color: #888; font-size: 14px;">
-                If you did not request this password reset, please ignore this email.
-              </p>
-            </div>
-            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-              © 2024 DoRayd Travel & Tours. All rights reserved.
-            </div>
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Password Reset</h2>
+            <p>You requested a password reset. Click below to create a new password. This link is valid for 10 minutes.</p>
+            <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+            <p>If you did not request this, please ignore this email.</p>
           </div>
-        `
+        `,
       };
 
-      console.log(`📧 Sending password reset email to ${email}...`);
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Password reset email sent:', result.messageId);
-      return result;
-
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent successfully to:', email);
+      return { success: true, message: 'Password reset email sent successfully' };
     } catch (error) {
       console.error('❌ Failed to send password reset email:', error.message);
-      throw new Error('Failed to send password reset email');
+      throw error;
     }
   }
 
-  // Send booking status update
-  async sendStatusUpdate(booking) {
-    await this.ready;
-
-    if (!this.isReady || !this.transporter) {
-      throw new Error('Email service is not properly configured');
-    }
-
+  async sendBookingApproval(booking) {
     try {
+      await this.ensureReady();
+
       const mailOptions = {
         from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
         to: booking.email,
-        subject: `Booking Status Update: ${booking.bookingReference} is ${booking.status.toUpperCase()}`,
+        subject: `Booking Approved: ${booking.bookingReference}`,
         html: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center;">
-              <h1 style="color: #007bff; margin: 0;">DoRayd Travel & Tours</h1>
+            <div style="background-color: #4CAF50; color: white; padding: 20px; text-align: center;">
+              <h1>🎉 Booking Approved!</h1>
             </div>
-            <div style="padding: 30px 20px;">
-              <h2 style="color: #333;">Booking Update!</h2>
-              <p>Dear ${booking.firstName},</p>
-              <p>The status of your booking with reference number <strong>${booking.bookingReference}</strong> has been updated to:</p>
-              <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                <strong style="font-size: 18px; color: #007bff;">${booking.status.toUpperCase()}</strong>
+            <div style="padding: 20px; background-color: #f9f9f9;">
+              <p>Dear <strong>${booking.firstName} ${booking.lastName}</strong>,</p>
+              <p>Your booking has been approved and confirmed.</p>
+
+              <div style="background-color: white; padding: 15px; border-radius: 5px;">
+                <h3>Booking Details:</h3>
+                <p><strong>Reference:</strong> ${booking.bookingReference}</p>
+                <p><strong>Service:</strong> ${booking.itemName}</p>
+                <p><strong>Start Date:</strong> ${new Date(booking.startDate).toLocaleDateString()}</p>
+                ${booking.endDate ? `<p><strong>End Date:</strong> ${new Date(booking.endDate).toLocaleDateString()}</p>` : ''}
+                <p><strong>Total Amount:</strong> ₱${booking.totalPrice.toLocaleString()}</p>
               </div>
+
               ${booking.adminNotes ? `
-                <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
-                  <strong>Notes from our team:</strong><br>
-                  ${booking.adminNotes}
-                </div>
-              ` : ''}
-              <p>If you have any questions, please reply to this email or contact us directly.</p>
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px;">
+                  <h4>Message from our team:</h4>
+                  <p>${booking.adminNotes}</p>
+                </div>` : ''}
+
               <p>Thank you for choosing DoRayd Travel & Tours!</p>
             </div>
-            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-              © 2024 DoRayd Travel & Tours. All rights reserved.
-            </div>
           </div>
-        `
+        `,
       };
 
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Status update email sent:', result.messageId);
-      return result;
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Booking approval email sent successfully to:', booking.email);
+      return { success: true, message: 'Booking approval email sent successfully' };
+    } catch (error) {
+      console.error('❌ Failed to send booking approval email:', error.message);
+      throw error;
+    }
+  }
 
+  async sendBookingRejection(booking) {
+    try {
+      await this.ensureReady();
+
+      const mailOptions = {
+        from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
+        to: booking.email,
+        subject: `Booking Status Update: ${booking.bookingReference}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #f44336; color: white; padding: 20px; text-align: center;">
+              <h1>Booking Rejected</h1>
+            </div>
+            <div style="padding: 20px; background-color: #f9f9f9;">
+              <p>Dear <strong>${booking.firstName} ${booking.lastName}</strong>,</p>
+              <p>We regret to inform you that your booking request could not be approved.</p>
+
+              <div style="background-color: white; padding: 15px; border-radius: 5px;">
+                <h3>Booking Details:</h3>
+                <p><strong>Reference:</strong> ${booking.bookingReference}</p>
+                <p><strong>Service:</strong> ${booking.itemName}</p>
+                <p><strong>Start Date:</strong> ${new Date(booking.startDate).toLocaleDateString()}</p>
+              </div>
+
+              ${booking.adminNotes ? `
+                <div style="background-color: #ffebee; padding: 15px; border-radius: 5px;">
+                  <h4>Reason:</h4>
+                  <p>${booking.adminNotes}</p>
+                </div>` : ''}
+
+              <p>We appreciate your understanding and look forward to serving you next time.</p>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Booking rejection email sent successfully to:', booking.email);
+      return { success: true, message: 'Booking rejection email sent successfully' };
+    } catch (error) {
+      console.error('❌ Failed to send booking rejection email:', error.message);
+      throw error;
+    }
+  }
+
+  async sendStatusUpdate(booking) {
+    try {
+      if (booking.status === 'confirmed') {
+        return await this.sendBookingApproval(booking);
+      } else if (booking.status === 'rejected') {
+        return await this.sendBookingRejection(booking);
+      }
+
+      await this.ensureReady();
+
+      const mailOptions = {
+        from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
+        to: booking.email,
+        subject: `Booking Update: ${booking.bookingReference}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Booking Status Update</h2>
+            <p>Dear ${booking.firstName},</p>
+            <p>Your booking status has been updated to: <strong>${booking.status.toUpperCase()}</strong>.</p>
+            ${booking.adminNotes ? `<p><strong>Notes:</strong> ${booking.adminNotes}</p>` : ''}
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Status update email sent successfully to:', booking.email);
+      return { success: true, message: 'Status update email sent successfully' };
     } catch (error) {
       console.error('❌ Failed to send status update email:', error.message);
       throw error;
     }
   }
 
-  // Send a reply to contact message
   async sendContactReply(message, replyMessage) {
-    await this.ready;
-
-    if (!this.isReady || !this.transporter) {
-      throw new Error('Email service is not properly configured');
-    }
-
     try {
+      await this.ensureReady();
+
       const mailOptions = {
         from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
         to: message.email,
         subject: `Re: ${message.subject}`,
         html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center;">
-              <h1 style="color: #007bff; margin: 0;">DoRayd Travel & Tours</h1>
-            </div>
-            <div style="padding: 30px 20px;">
-              <p>Hello ${message.name},</p>
-              <p>Thank you for contacting us. Here is the response to your inquiry:</p>
-              <div style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
-                ${replyMessage}
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                <p style="font-size: 0.9em; color: #777; margin: 0;">
-                  <strong>Your Original Message:</strong><br>
-                  "${message.message}"
-                </p>
-              </div>
-            </div>
-            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-              © 2024 DoRayd Travel & Tours. All rights reserved.
-            </div>
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Reply to Your Message</h2>
+            <p>Dear ${message.name},</p>
+            <p>Thank you for contacting us. Here's our response:</p>
+            <blockquote style="background-color: #f0f0f0; padding: 10px; border-left: 4px solid #007bff;">
+              ${replyMessage}
+            </blockquote>
+            <p>Best regards,<br>DoRayd Travel & Tours Team</p>
           </div>
-        `
+        `,
       };
 
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Contact reply sent:', result.messageId);
-      return result;
-
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Contact reply email sent successfully to:', message.email);
+      return { success: true, message: 'Contact reply email sent successfully' };
     } catch (error) {
-      console.error('❌ Failed to send contact reply:', error.message);
+      console.error('❌ Failed to send contact reply email:', error.message);
       throw error;
     }
   }
 
-  // Check if service is ready
-  isServiceReady() {
-    return this.isReady;
-  }
+  async sendBookingConfirmation(booking) {
+    try {
+      await this.ensureReady();
 
-  // Reinitialize transporter manually if needed
-  async reinitialize() {
-    this.isReady = false;
-    this.transporter = null;
-    this.ready = this.initializeTransporter();
+      const mailOptions = {
+        from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
+        to: booking.email,
+        subject: `Booking Received: ${booking.bookingReference}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #2196F3; color: white; padding: 20px; text-align: center;">
+              <h1>📋 Booking Received</h1>
+            </div>
+            <div style="padding: 20px; background-color: #f9f9f9;">
+              <p>Dear <strong>${booking.firstName} ${booking.lastName}</strong>,</p>
+              <p>We have received your booking request and it is currently under review.</p>
+
+              <div style="background-color: white; padding: 15px; border-radius: 5px;">
+                <h3>Booking Details:</h3>
+                <p><strong>Reference:</strong> ${booking.bookingReference}</p>
+                <p><strong>Service:</strong> ${booking.itemName}</p>
+                <p><strong>Start Date:</strong> ${new Date(booking.startDate).toLocaleDateString()}</p>
+                ${booking.endDate ? `<p><strong>End Date:</strong> ${new Date(booking.endDate).toLocaleDateString()}</p>` : ''}
+                <p><strong>Total Amount:</strong> ₱${booking.totalPrice.toLocaleString()}</p>
+                <p><strong>Status:</strong> <span style="color: #ff9800;">Pending Approval</span></p>
+              </div>
+
+              <p>You will receive another email once your booking is reviewed.</p>
+              <p>Thank you for choosing DoRayd Travel & Tours!</p>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Booking confirmation email sent successfully to:', booking.email);
+      return { success: true, message: 'Booking confirmation email sent successfully' };
+    } catch (error) {
+      console.error('❌ Failed to send booking confirmation email:', error.message);
+      throw error;
+    }
   }
 }
 
-// Export a single shared instance
 export default new EmailService();

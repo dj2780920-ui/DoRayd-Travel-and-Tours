@@ -1,25 +1,27 @@
-// routes/reviews.js
-
 import express from 'express';
-import { createReview, getMyReviews, updateReview, deleteReview, getAllReviews, approveReview, getReviewsForItem } from '../controllers/reviewsController.js'; // UPDATED: Added getReviewsForItem
-import { auth, authorize } from '../middleware/auth.js';
+import { 
+    submitReview, 
+    getReviewsForItem, 
+    getMyReviews,
+    getAllReviews,
+    approveReview,
+    disapproveReview
+} from '../controllers/reviewsController.js';
+import { auth } from '../middleware/auth.js';
+import { checkPermission } from '../middleware/permission.js';
 
 const router = express.Router();
 
-router.route('/')
-    .post(auth, authorize('customer'), createReview)
-    .get(auth, authorize('admin'), getAllReviews);
-
-router.route('/my-reviews')
-    .get(auth, authorize('customer'), getMyReviews);
-
+// Public routes
 router.get('/item/:itemId', getReviewsForItem);
 
-router.route('/:id')
-    .put(auth, authorize('customer'), updateReview)
-    .delete(auth, authorize('customer', 'admin'), deleteReview);
+// Protected routes (require authentication)
+router.post('/', auth, submitReview);
+router.get('/my-reviews', auth, getMyReviews);
 
-router.route('/:id/approve')
-    .put(auth, authorize('admin'), approveReview);
+// Admin routes
+router.get('/', auth, checkPermission('reviews', 'read'), getAllReviews);
+router.patch('/:id/approve', auth, checkPermission('reviews', 'write'), approveReview);
+router.patch('/:id/disapprove', auth, checkPermission('reviews', 'write'), disapproveReview);
 
 export default router;

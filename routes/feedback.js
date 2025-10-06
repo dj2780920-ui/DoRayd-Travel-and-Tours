@@ -1,18 +1,27 @@
 import express from 'express';
-import { createFeedback, getAllFeedback, getPublicFeedback, approveFeedback, deleteFeedback } from '../controllers/feedbackController.js';
-import { auth, authorize } from '../middleware/auth.js';
+import { 
+    submitFeedback, 
+    getPublicFeedback, 
+    getMyFeedback,
+    getAllFeedback,
+    approveFeedback,
+    disapproveFeedback
+} from '../controllers/reviewsController.js';
+import { auth } from '../middleware/auth.js';
+import { checkPermission } from '../middleware/permission.js';
 
 const router = express.Router();
 
-// Authenticated routes
-router.route('/')
-    .post(auth, authorize('customer'), createFeedback)
-    .get(auth, authorize('admin'), getAllFeedback);
-
-router.route('/:id/approve').put(auth, authorize('admin'), approveFeedback);
-router.route('/:id').delete(auth, authorize('admin'), deleteFeedback);
-
-// Public route
+// Public routes
 router.get('/public', getPublicFeedback);
+
+// Protected routes (require authentication)
+router.post('/', auth, submitFeedback);
+router.get('/my-feedback', auth, getMyFeedback);
+
+// Admin routes
+router.get('/', auth, checkPermission('reviews', 'read'), getAllFeedback);
+router.patch('/:id/approve', auth, checkPermission('reviews', 'write'), approveFeedback);
+router.patch('/:id/disapprove', auth, checkPermission('reviews', 'write'), disapproveFeedback);
 
 export default router;

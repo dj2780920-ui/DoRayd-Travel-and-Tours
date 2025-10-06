@@ -6,45 +6,49 @@ import DataService, { SERVER_URL } from '../components/services/DataService';
 import BookingModal from '../components/BookingModal';
 
 // --- Reviews Section Component ---
-const ReviewsSection = ({ reviews, loading }) => {
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading reviews...</div>;
-  }
+const ReviewsSection = ({ carId }) => {
+  const { data: reviewsData, loading: reviewsLoading } = useApi(() => DataService.fetchReviewsForItem(carId), [carId]);
+  const reviews = reviewsData?.data || [];
 
-  if (!reviews || reviews.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">No reviews yet for this car.</p>
-      </div>
-    );
-  }
+  if (reviewsLoading) return <div className="text-center p-4">Loading reviews...</div>;
 
   return (
-    <div className="mt-12">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Customer Reviews</h2>
-      <div className="space-y-6">
-        {reviews.map(review => (
-          <div key={review._id} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-semibold text-gray-900">
-                {review.isAnonymous ? 'Anonymous' : `${review.user.firstName} ${review.user.lastName.charAt(0)}.`}
-              </p>
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
-                ))}
+    <div className="mt-8">
+      <h3 className="text-2xl font-bold mb-6">Customer Reviews</h3>
+      {reviews.length > 0 ? (
+        <div className="space-y-4">
+          {reviews.map(review => (
+            <div key={review._id} className="bg-white p-6 rounded-lg shadow-md border">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h4 className="font-semibold">
+                    {review.isAnonymous ? 'Anonymous User' : `${review.user?.firstName} ${review.user?.lastName}`}
+                  </h4>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
+                      ))}
+                    </div>
+                    <span className="text-sm text-gray-500">({review.rating}/5)</span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
               </div>
+              <p className="text-gray-700">{review.comment}</p>
             </div>
-            <p className="text-gray-700 italic">"{review.comment}"</p>
-            <p className="text-xs text-gray-400 mt-4">
-              Reviewed on: {new Date(review.createdAt).toLocaleDateString()}
-            </p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-gray-50 p-8 rounded-lg text-center">
+          <Star className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-600">No reviews yet. Be the first to review this car!</p>
+        </div>
+      )}
     </div>
   );
 };
+
 
 
 const CarDetails = () => {
