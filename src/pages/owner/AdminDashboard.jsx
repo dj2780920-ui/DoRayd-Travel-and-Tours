@@ -33,6 +33,7 @@ const AdminDashboard = () => {
         { name: 'Manage Tours', href: '/owner/manage-tours', icon: MapPin },
         { name: 'Manage Bookings', href: '/owner/manage-bookings', icon: Calendar },
         { name: 'Manage Reviews', href: '/owner/manage-reviews', icon: Star },
+        { name: 'Manage Feedback', href: '/owner/manage-feedback', icon: MessageSquare },
         { name: 'Reports', href: '/owner/reports', icon: FileText },
         { name: 'Content Management', href: '/owner/content-management', icon: Settings },
         { name: 'Messages', href: '/owner/messages', icon: MessageSquare },

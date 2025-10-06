@@ -12,52 +12,46 @@ const CustomerDashboard = () => {
     const { notifications } = useSocket();
     const [bookings, setBookings] = useState([]);
     const [reviews, setReviews] = useState([]);
+    const [publicFeedback, setPublicFeedback] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('bookings');
+    const [activeTab, setActiveTab] = useState(isAuthenticated ? 'bookings' : 'publicFeedback');
+
 
    const fetchData = useCallback(async () => {
-    if (isAuthenticated) {
-        console.log('=== FETCHING USER BOOKINGS ===');
-        console.log('User:', user);
-        console.log('Is Authenticated:', isAuthenticated);
-        console.log('Token in localStorage:', localStorage.getItem('token'));
-        
-        setLoading(true);
-        setError(null);
-        try {
-            const [bookingsRes, reviewsRes] = await Promise.all([
-                DataService.fetchUserBookings(),
-                DataService.getMyReviews()
-            ]);
+    setLoading(true);
+    setError(null);
+    try {
+        const promises = [DataService.fetchPublicFeedback()]; // Fetch all approved feedback
+        if (isAuthenticated) {
+            promises.push(DataService.fetchUserBookings());
+            promises.push(DataService.getMyReviews());
+        }
 
-            console.log('Bookings Response:', bookingsRes);
-            console.log('Reviews Response:', reviewsRes);
+        const [publicFeedbackRes, bookingsRes, myReviewsRes] = await Promise.all(promises);
 
+        if (publicFeedbackRes.success) setPublicFeedback(publicFeedbackRes.data);
+
+        if (isAuthenticated) {
             if (bookingsRes.success) setBookings(bookingsRes.data);
             else throw new Error(bookingsRes.message || "Could not fetch bookings.");
 
-            if (reviewsRes.success) setReviews(reviewsRes.data);
-            else throw new Error(reviewsRes.message || "Could not fetch reviews.");
-
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
+            if (myReviewsRes.success) setReviews(myReviewsRes.data);
+            else throw new Error(myReviewsRes.message || "Could not fetch reviews.");
         }
-    } else {
-        console.log('Not authenticated, skipping fetch');
+
+    } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err.message);
+    } finally {
+        setLoading(false);
     }
-}, [isAuthenticated, user]);
+}, [isAuthenticated]);
+
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    if (!isAuthenticated) {
-        return <div className="text-center p-10">Please log in to view your dashboard.</div>;
-    }
 
     if (loading) {
         return <div className="text-center p-10">Loading your dashboard...</div>;
@@ -77,26 +71,35 @@ const CustomerDashboard = () => {
         pending: bookings.filter(b => b.status === 'pending').length,
         confirmed: bookings.filter(b => b.status === 'confirmed').length
     };
+    
+    const navTabs = isAuthenticated
+    ? ['bookings', 'my reviews', 'leave a review', 'public feedback', 'calendar', 'account settings']
+    : ['public feedback'];
+
 
     return (
         <div className="bg-gray-50 min-h-screen">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
-                    <h1 className="text-4xl font-bold text-gray-900">Welcome, {user?.firstName}!</h1>
-                    <p className="text-lg text-gray-600 mt-2">Manage your bookings and reviews all in one place.</p>
-                </div>
+                {isAuthenticated && (
+                    <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
+                        <h1 className="text-4xl font-bold text-gray-900">Welcome, {user?.firstName}!</h1>
+                        <p className="text-lg text-gray-600 mt-2">Manage your bookings and reviews all in one place.</p>
+                    </div>
+                )}
                 
                 <MarqueeHero />
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <StatCard title="Total Bookings" value={stats.total} icon={BarChart2} />
-                    <StatCard title="Upcoming Trips" value={stats.confirmed} icon={Car} />
-                    <StatCard title="Pending Bookings" value={stats.pending} icon={Clock} />
-                    <StatCard title="Completed Trips" value={stats.completed} icon={CheckCircle} />
-                </div>
+                {isAuthenticated && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <StatCard title="Total Bookings" value={stats.total} icon={BarChart2} />
+                        <StatCard title="Upcoming Trips" value={stats.confirmed} icon={Car} />
+                        <StatCard title="Pending Bookings" value={stats.pending} icon={Clock} />
+                        <StatCard title="Completed Trips" value={stats.completed} icon={CheckCircle} />
+                    </div>
+                )}
 
                 <div className="flex border-b border-gray-200 mb-6 bg-white rounded-t-lg shadow-sm">
-                    {['bookings', 'leave a review', 'my reviews', 'calendar', 'account settings'].map(tab => (
+                    {navTabs.map(tab => (
                        <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 text-sm font-medium transition-colors capitalize ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
                            {tab}
                        </button>
@@ -107,6 +110,7 @@ const CustomerDashboard = () => {
                    {activeTab === 'bookings' && <BookingsList bookings={bookings} />}
                    {activeTab === 'leave a review' && <LeaveReviewSection bookings={bookings} onReviewSubmit={fetchData} reviews={reviews} />}
                    {activeTab === 'my reviews' && <MyReviewsSection reviews={reviews} onUpdate={fetchData} />}
+                   {activeTab === 'public feedback' && <PublicFeedbackSection feedbacks={publicFeedback} />}
                    {activeTab === 'calendar' && <BookingCalendar events={calendarEvents} />}
                    {activeTab === 'account settings' && <AccountSettings user={user} />}
                 </div>
@@ -133,24 +137,34 @@ const BookingsList = ({ bookings }) => (
         <h2 className="text-2xl font-bold mb-4">My Bookings</h2>
         <div className="space-y-4">
             {bookings.length > 0 ? bookings.map(booking => (
-                <div key={booking._id} className="p-4 border rounded-lg flex justify-between items-center">
-                    <div>
-                        <p className="font-bold">{booking.itemId?.title || `${booking.itemId?.brand} ${booking.itemId?.model}`}</p>
-                        <p className="text-sm text-gray-500">{booking.bookingReference}</p>
+                <div key={booking._id} className="p-4 border rounded-lg">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="font-bold">{booking.itemId?.title || `${booking.itemId?.brand} ${booking.itemId?.model}`}</p>
+                            <p className="text-sm text-gray-500">{booking.bookingReference}</p>
+                        </div>
+                        <div>
+                            <p className="font-semibold">₱{booking.totalPrice.toLocaleString()}</p>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                booking.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>{booking.status}</span>
+                        </div>
                     </div>
-                    <div>
-                         <p className="font-semibold">₱{booking.totalPrice.toLocaleString()}</p>
-                         <span className={`px-2 py-1 text-xs rounded-full ${
-                             booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                             booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                             'bg-red-100 text-red-800'
-                         }`}>{booking.status}</span>
-                    </div>
+                    {booking.status === 'rejected' && booking.adminNotes && (
+                        <div className="mt-2 p-3 bg-red-50 border-l-4 border-red-500 text-red-700">
+                            <p className="font-semibold">Reason for rejection:</p>
+                            <p>{booking.adminNotes}</p>
+                        </div>
+                    )}
                 </div>
             )) : <p>You have no bookings yet.</p>}
         </div>
     </div>
 );
+
 
 const LeaveReviewSection = ({ bookings, onReviewSubmit, reviews }) => {
     const [selectedBookingId, setSelectedBookingId] = useState('');
@@ -167,19 +181,19 @@ const LeaveReviewSection = ({ bookings, onReviewSubmit, reviews }) => {
         };
         const response = await DataService.submitFeedback(reviewData);
         if (response.success) {
-            alert('Thank you for your feedback!');
+            alert('Thank you for your feedback! It is now pending approval from an admin.');
             onReviewSubmit();
         } else {
             alert('Failed to submit feedback: ' + response.message);
         }
     };
     
-    const reviewedBookingIds = new Set(reviews.map(r => r.booking));
-    const completetedBookings = bookings.filter(b => b.status === 'completed' && !reviewedBookingIds.has(b._id));
+    const reviewedBookingIds = new Set(reviews.map(r => String(r.booking)));
+    const completetedBookings = bookings.filter(b => b.status === 'completed' && !reviewedBookingIds.has(String(b._id)));
 
     return (
          <div>
-            <h2 className="text-2xl font-bold mb-4">Leave a Review</h2>
+            <h2 className="text-2xl font-bold mb-4">Leave a Review for a Completed Booking</h2>
             {completetedBookings.length > 0 ? (
                 <div className="space-y-4">
                     <select onChange={(e) => setSelectedBookingId(e.target.value)} className="p-2 border rounded w-full">
@@ -193,7 +207,7 @@ const LeaveReviewSection = ({ bookings, onReviewSubmit, reviews }) => {
                             <Star key={star} onClick={() => setRating(star)} className={`cursor-pointer w-6 h-6 ${rating >= star ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
                         ))}
                     </div>
-                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="p-2 border rounded w-full" rows="4" placeholder="Share your experience..."></textarea>
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="p-2 border rounded w-full" rows="4" placeholder="Share your experience with the tour or car..."></textarea>
                     <div className="flex items-center">
                         <input type="checkbox" id="anonymous" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} />
                         <label htmlFor="anonymous" className="ml-2 text-sm">Post as anonymous</label>
@@ -226,6 +240,9 @@ const MyReviewsSection = ({ reviews, onUpdate }) => {
                                     {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />)}
                                 </div>
                                 <p className="text-gray-700">{review.comment}</p>
+                                <p className={`text-sm mt-2 ${review.isApproved ? 'text-green-600' : 'text-yellow-600'}`}>
+                                    {review.isApproved ? 'Approved' : 'Pending Approval'}
+                                </p>
                             </div>
                             <div>
                                 <button onClick={() => handleDelete(review._id)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
@@ -237,6 +254,28 @@ const MyReviewsSection = ({ reviews, onUpdate }) => {
         </div>
     );
 };
+
+const PublicFeedbackSection = ({ feedbacks }) => (
+    <div>
+        <h2 className="text-2xl font-bold mb-4">Customer Feedback</h2>
+        <div className="space-y-4">
+            {feedbacks.length > 0 ? feedbacks.map(feedback => (
+                <div key={feedback._id} className="p-4 border rounded-lg">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-bold">{feedback.user.firstName} {feedback.user.lastName}</p>
+                            <div className="flex items-center gap-1 my-1">
+                                {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < feedback.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />)}
+                            </div>
+                            <p className="text-gray-700">{feedback.comment}</p>
+                        </div>
+                    </div>
+                </div>
+            )) : <p>No feedback has been published yet.</p>}
+        </div>
+    </div>
+);
+
 
 const BookingCalendar = ({ events }) => (
     <div>

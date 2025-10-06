@@ -135,8 +135,10 @@ export const getReviewsForItem = async (req, res) => {
         const reviews = await Review.find({ item: itemId, isApproved: true })
             .populate('user', 'firstName lastName')
             .sort({ createdAt: -1 });
+            
+        const validReviews = reviews.filter(review => review.user);
 
-        res.json({ success: true, data: reviews });
+        res.json({ success: true, data: validReviews });
     } catch (error) {
         console.error('Error fetching reviews for item:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch reviews.' });

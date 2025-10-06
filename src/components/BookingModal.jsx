@@ -115,75 +115,127 @@ const BookingModal = ({ isOpen, onClose, item, itemType }) => {
   };
   
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitError('');
+  e.preventDefault();
+  setSubmitError('');
+  
+  // Validation: Personal Information
+  if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
+    return setSubmitError('Please fill in all your personal information.');
+  }
+  
+  // Validation: Car-specific
+  if (itemType === 'car') {
+    if (!formData.startDate || !formData.time || formData.numberOfDays < 1) {
+      return setSubmitError('Please select a start date, time, and number of days.');
+    }
+    if (formData.deliveryMethod === 'pickup' && !formData.pickupLocation) {
+      return setSubmitError('Please select a pickup location.');
+    }
+    if (formData.deliveryMethod === 'dropoff' && !formData.dropoffLocation) {
+      return setSubmitError('Please select a drop-off location on the map.');
+    }
+  }
+  
+  // Validation: Tour-specific
+  if (itemType === 'tour') {
+    if (!formData.startDate) {
+      return setSubmitError('Tour date is missing. Please contact support.');
+    }
+    if (!item.endDate) {
+      return setSubmitError('Tour end date is missing. Please contact support.');
+    }
+  }
+  
+  // Validation: Payment
+  if (!formData.paymentProof) {
+    return setSubmitError('Please upload your proof of payment.');
+  }
+  if (!formData.paymentReference) {
+    return setSubmitError('Please enter your payment reference number.');
+  }
+  if (!formData.amountPaid) {
+    return setSubmitError('Please enter the amount you paid.');
+  }
+  if (!formData.agreedToTerms) {
+    return setSubmitError('You must agree to the terms and conditions to proceed.');
+  }
+
+  setSubmitting(true);
+
+  try {
+    const bookingData = new FormData();
     
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) 
-      return setSubmitError('Please fill in all your personal information.');
+    // Calculate dates
+    const fullStartDate = combineDateAndTime(formData.startDate, formData.time);
+    const fullEndDate = calculatedEndDate ? calculatedEndDate.toISOString() : fullStartDate;
+
+    // Required fields - Add these first
+    bookingData.append('startDate', fullStartDate);
+    bookingData.append('endDate', fullEndDate);
+    bookingData.append('firstName', formData.firstName);
+    bookingData.append('lastName', formData.lastName);
+    bookingData.append('email', formData.email);
+    bookingData.append('phone', formData.phone);
+    bookingData.append('numberOfGuests', formData.numberOfGuests);
+    bookingData.append('agreedToTerms', formData.agreedToTerms);
+    bookingData.append('paymentReference', formData.paymentReference);
+    bookingData.append('amountPaid', formData.amountPaid);
+    bookingData.append('itemId', item._id);
+    bookingData.append('itemType', itemType);
+    bookingData.append('totalPrice', totalPrice);
+    bookingData.append('itemName', itemType === 'car' ? `${item.brand} ${item.model}` : item.title);
     
-    if (itemType === 'car') {
-        if (!formData.startDate || !formData.time || formData.numberOfDays < 1) 
-          return setSubmitError('Please select a start date, time, and number of days.');
-        if (formData.deliveryMethod === 'pickup' && !formData.pickupLocation) 
-          return setSubmitError('Please select a pickup location.');
-        if (formData.deliveryMethod === 'dropoff' && !formData.dropoffLocation) 
-          return setSubmitError('Please select a drop-off location on the map.');
+    // Payment proof file
+    if (formData.paymentProof) {
+      bookingData.append('paymentProof', formData.paymentProof);
     }
     
-    if (itemType === 'tour') {
-        if (!formData.startDate) 
-          return setSubmitError('Tour date is missing. Please contact support.');
-        if (!item.endDate)
-          return setSubmitError('Tour end date is missing. Please contact support.');
+    // Optional fields - Only append if they have values
+    if (formData.specialRequests) {
+      bookingData.append('specialRequests', formData.specialRequests);
     }
     
-    if (!formData.paymentProof) 
-      return setSubmitError('Please upload your proof of payment.');
-    if (!formData.paymentReference) 
-      return setSubmitError('Please enter your payment reference number.');
-    if (!formData.amountPaid) 
-      return setSubmitError('Please enter the amount you paid.');
-    if (!formData.agreedToTerms) 
-      return setSubmitError('You must agree to the terms and conditions to proceed.');
-
-    setSubmitting(true);
-
-    try {
-      const bookingData = new FormData();
-      const fullStartDate = combineDateAndTime(formData.startDate, formData.time);
-      const fullEndDate = calculatedEndDate ? calculatedEndDate.toISOString() : fullStartDate;
-
-      bookingData.append('startDate', fullStartDate);
-      bookingData.append('endDate', fullEndDate);
-      
-      Object.keys(formData).forEach(key => {
-        if (key === 'startDate' || key === 'endDate') {
-          return;
-        }
-        if (key === 'dropoffCoordinates' && formData[key]) {
-          bookingData.append(key, JSON.stringify(formData[key]));
-        } else if (formData[key] !== null) {
-          bookingData.append(key, formData[key]);
-        }
-      });
-      
-      bookingData.append('itemId', item._id);
-      bookingData.append('itemType', itemType);
-      bookingData.append('totalPrice', totalPrice);
-      bookingData.append('itemName', itemType === 'car' ? `${item.brand} ${item.model}` : item.title);
-
-      const result = await DataService.createBooking(bookingData);
-      if (result.success) {
-        setSubmitSuccess(true);
-      } else {
-        throw new Error(result.message || 'Booking failed.');
-      }
-    } catch (error) {
-      setSubmitError(error.message || 'An error occurred.');
-    } finally {
-      setSubmitting(false);
+    if (formData.deliveryMethod) {
+      bookingData.append('deliveryMethod', formData.deliveryMethod);
     }
-  };
+    
+    if (formData.pickupLocation) {
+      bookingData.append('pickupLocation', formData.pickupLocation);
+    }
+    
+    if (formData.dropoffLocation) {
+      bookingData.append('dropoffLocation', formData.dropoffLocation);
+    }
+    
+    if (formData.dropoffCoordinates) {
+      bookingData.append('dropoffCoordinates', JSON.stringify(formData.dropoffCoordinates));
+    }
+    
+    // Car-specific field
+    if (itemType === 'car' && formData.numberOfDays) {
+      bookingData.append('numberOfDays', formData.numberOfDays);
+    }
+
+    // Debug: Log what we're sending (remove in production)
+    console.log('Sending booking data:');
+    for (let pair of bookingData.entries()) {
+      console.log(pair[0] + ': ' + pair[1]);
+    }
+
+    const result = await DataService.createBooking(bookingData);
+    
+    if (result.success) {
+      setSubmitSuccess(true);
+    } else {
+      throw new Error(result.message || 'Booking failed.');
+    }
+  } catch (error) {
+    console.error('Booking submission error:', error);
+    setSubmitError(error.message || 'An error occurred while submitting your booking.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const formatPrice = (price) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(price);
   

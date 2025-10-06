@@ -40,7 +40,11 @@ export const getAllBookings = async (req, res) => {
         })
         .populate('user', 'firstName lastName')
         .sort({ createdAt: -1 });
-    res.json({ success: true, data: bookings });
+
+    // Filter out bookings with null populated fields
+    const validBookings = bookings.filter(booking => booking.itemId);
+
+    res.json({ success: true, data: validBookings });
   } catch (error) {
     console.error('Error fetching all bookings:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -50,11 +54,14 @@ export const getAllBookings = async (req, res) => {
 // Get bookings for the currently authenticated user
 export const getMyBookings = async (req, res) => {
     try {
-        // UPDATED: Removed 'archived: false' from the query
         const bookings = await Booking.find({ user: req.user.id })
             .populate('itemId')
             .sort({ createdAt: -1 });
-        res.json({ success: true, data: bookings });
+        
+        // Filter out bookings with null populated fields
+        const validBookings = bookings.filter(booking => booking.itemId);
+
+        res.json({ success: true, data: validBookings });
     } catch (error) {
         console.error('Error fetching user bookings:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -77,7 +84,9 @@ export const createBooking = async (req, res) => {
         const finalFirstName = isUserLoggedIn ? req.user.firstName : firstName;
         const finalLastName = isUserLoggedIn ? req.user.lastName : lastName;
         const finalEmail = isUserLoggedIn ? req.user.email : email;
-        const finalPhone = isUserLoggedIn ? req.user.phone : phone;
+        
+        // Prioritize the phone number from the form, fallback to user profile
+        const finalPhone = phone || (isUserLoggedIn ? req.user.phone : '');
 
         if (!itemType || !itemId || !startDate) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });

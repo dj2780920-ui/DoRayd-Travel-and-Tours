@@ -16,6 +16,52 @@ const handleError = (error, defaultMessage = 'An unknown error occurred.') => {
 };
 
 const DataService = {
+  // --- Feedback ---
+  submitGeneralFeedback: async (feedbackData) => {
+    try {
+      const response = await axios.post(`${API_URL}/feedback`, feedbackData, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to submit feedback.');
+    }
+  },
+
+  fetchAllFeedback: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/feedback`, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to fetch feedback.');
+    }
+  },
+
+  fetchPublicFeedback: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/feedback/public`);
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to fetch public feedback.');
+    }
+  },
+
+  approveFeedback: async (id) => {
+    try {
+      const response = await axios.put(`${API_URL}/feedback/${id}/approve`, {}, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to approve feedback.');
+    }
+  },
+
+  deleteFeedback: async (id) => {
+    try {
+      const response = await axios.delete(`${API_URL}/feedback/${id}`, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to delete feedback.');
+    }
+  },
+
   // --- Forgot Password ---
   forgotPassword: async (email) => {
     try {

@@ -34,6 +34,7 @@ import Reports from './pages/owner/Reports.jsx';
 import Messages from './pages/owner/Message.jsx';
 import ContentManagement from './pages/owner/ContentManagement.jsx';
 import ManageReviews from './pages/owner/ManageReviews.jsx';
+import ManageFeedback from './pages/owner/ManageFeedback.jsx'; // Import ManageFeedback
 import CustomerManagement from './pages/owner/CustomerManagement.jsx';
 
 // Employee Pages & Layout
@@ -126,6 +127,7 @@ return (
             <Route path="messages" element={<Messages />} />
             <Route path="content-management" element={<ContentManagement />} />
             <Route path="manage-reviews" element={<ManageReviews />} />
+            <Route path="manage-feedback" element={<ManageFeedback />} /> {/* Add feedback route */}
             <Route path="customer-management" element={<CustomerManagement />} />
           </Route>
 

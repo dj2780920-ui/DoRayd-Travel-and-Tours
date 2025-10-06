@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
 
+// Route Imports
 import analyticsRoutes from './routes/analytics.js';
 import authRoutes from './routes/auth.js';
 import bookingRoutes from './routes/bookings.js';
@@ -19,67 +20,33 @@ import tourRoutes from './routes/tours.js';
 import uploadRoutes from './routes/upload.js';
 import userRoutes from './routes/users.js';
 import reviewRoutes from './routes/reviews.js';
+import feedbackRoutes from './routes/feedback.js'; // Ensure feedback routes are imported
 
-// Import middleware
+// Middleware Imports
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
-dotenv.config();
-
+// Initial Setup
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || '*', // In production, restrict this to your frontend's URL
+    origin: process.env.CLIENT_URL || '*',
     methods: ['GET', 'POST'],
   },
 });
-
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Core Middleware
 app.use(cors());
 app.use(express.json());
-
-// Serve static files - IMPORTANT: This must come before other routes
-const uploadsPath = path.join(__dirname, 'uploads');
-console.log('📁 Serving uploads from:', uploadsPath);
-
-// Serve uploads directory with proper configuration
-app.use('/uploads', express.static(uploadsPath, {
-  setHeaders: (res, filePath) => {
-    // Set proper content type for images
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (filePath.endsWith('.png')) {
-      res.setHeader('Content-Type', 'image/png');
-    } else if (filePath.endsWith('.webp')) {
-      res.setHeader('Content-Type', 'image/webp');
-    } else if (filePath.endsWith('.gif')) {
-      res.setHeader('Content-Type', 'image/gif');
-    }
-    // Add cache control headers
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-  }
-}));
-
-// Log all requests to uploads directory for debugging
-app.use('/uploads', (req, res, next) => {
-  console.log('📷 Upload request:', req.method, req.url);
-  next();
-});
-
-app.use(express.static(path.join(__dirname, 'public')));
 app.set('io', io);
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// --- CORRECT ROUTING ORDER ---
 
-// API Routes
+// 1. API Routes
+// All API calls should be handled first.
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -90,43 +57,34 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/feedback', feedbackRoutes); // Ensure feedback API route is registered
 
-// Health check endpoint
+// API Health Check
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Server is healthy',
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    uploadsPath: uploadsPath,
   });
 });
 
-// Test endpoint to check if uploads directory is accessible
-app.get('/api/test-uploads', (req, res) => {
-  const fs = require('fs');
-  const testPath = path.join(__dirname, 'uploads');
-  
-  try {
-    const exists = fs.existsSync(testPath);
-    const dirs = exists ? fs.readdirSync(testPath) : [];
-    
-    res.json({
-      success: true,
-      uploadsPath: testPath,
-      exists: exists,
-      directories: dirs,
-      message: 'Uploads directory check'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      uploadsPath: testPath
-    });
-  }
+// 2. Static Asset Routes
+// Serve uploaded files next.
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
+// 3. Frontend Application Route
+// This should come after all API and static routes.
+// It serves your React app's main HTML file for any non-API, non-file request.
+const clientBuildPath = path.join(__dirname, '../client/dist'); // Adjust if your client build folder is different
+app.use(express.static(clientBuildPath));
+app.get('*', (req, res) => {
+    res.sendFile(path.resolve(clientBuildPath, 'index.html'));
 });
 
-// Socket.io connection handler
+// --- END OF CORRECT ROUTING ORDER ---
+
+// Socket.io Connection Handler
 io.on('connection', (socket) => {
   console.log('✅ A user connected via WebSocket');
   socket.on('disconnect', () => {
@@ -138,14 +96,14 @@ io.on('connection', (socket) => {
 app.use(notFound);
 app.use(errorHandler);
 
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📁 Uploads directory: ${uploadsPath}`);
-  console.log(`🌐 Access uploads at: http://localhost:${PORT}/uploads/`);
-  console.log('=== ENVIRONMENT CHECK ===');
-  console.log('EMAIL_USER:', process.env.EMAIL_USER);
-  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'SET ✓' : 'NOT SET ✗');
-  console.log('========================');
-});
+// MongoDB Connection and Server Start
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('✅ MongoDB Connected');
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
 export default app;
