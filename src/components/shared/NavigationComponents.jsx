@@ -19,6 +19,7 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
     { name: 'Tours', href: '/tours' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
+    { name: 'Feedback', href: '/feedback' },
   ];
 
   useEffect(() => {
@@ -229,4 +230,3 @@ export const Footer = () => {
     </footer>
   );
 };
-

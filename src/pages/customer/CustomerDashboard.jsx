@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
     Calendar, 
     Clock, 
@@ -9,11 +9,12 @@ import {
     Settings, 
     User,
     Heart,
-    Award
+    Award,
+    Upload
 } from 'lucide-react';
 import { useAuth } from '../../components/Login.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
-import DataService from '../../components/services/DataService.jsx';
+import DataService, { SERVER_URL } from '../../components/services/DataService.jsx';
 
 const CustomerDashboard = () => {
     const { user } = useAuth();
@@ -30,9 +31,10 @@ const CustomerDashboard = () => {
     const myFeedback = feedbackData?.data || [];
     const publicFeedback = publicFeedbackData?.data || [];
 
-    const completedBookings = bookings.filter(b => b.status === 'completed');
-    const reviewedBookingIds = new Set(myReviews.map(r => r.booking));
-    const feedbackBookingIds = new Set(myFeedback.map(f => f.booking));
+    const completedBookings = useMemo(() => bookings.filter(b => b.status === 'completed'), [bookings]);
+    const reviewedBookingIds = useMemo(() => new Set(myReviews.map(r => String(r.booking))), [myReviews]);
+    const feedbackBookingIds = useMemo(() => new Set(myFeedback.map(f => String(f.booking))), [myFeedback]);
+    
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: User },
@@ -263,6 +265,11 @@ const MyFeedbackTab = ({ feedback }) => (
                         </span>
                     </div>
                     <p className="text-gray-700">{item.comment}</p>
+                     {item.image && (
+                        <div className="mt-4">
+                            <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border" />
+                        </div>
+                    )}
                     <p className="text-sm text-gray-500 mt-2">
                         {new Date(item.createdAt).toLocaleDateString()}
                     </p>
@@ -281,8 +288,8 @@ const LeaveReviewTab = ({ bookings, reviewedBookingIds, onReviewSubmit }) => {
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    const availableBookings = bookings.filter(b => !reviewedBookingIds.has(b._id));
-
+    const availableBookings = useMemo(() => bookings.filter(b => !reviewedBookingIds.has(String(b._id))), [bookings, reviewedBookingIds]);
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedBookingId || !rating || !comment.trim()) {
@@ -291,14 +298,14 @@ const LeaveReviewTab = ({ bookings, reviewedBookingIds, onReviewSubmit }) => {
         }
 
         setSubmitting(true);
-        try {
-            const reviewData = {
-                bookingId: selectedBookingId,
-                rating,
-                comment: comment.trim(),
-                isAnonymous
-            };
+        const reviewData = {
+            bookingId: selectedBookingId,
+            rating,
+            comment: comment.trim(),
+            isAnonymous
+        };
 
+        try {
             const response = await DataService.submitReview(reviewData);
             
             if (response.success) {
@@ -416,11 +423,18 @@ const LeaveFeedbackTab = ({ bookings, feedbackBookingIds, onFeedbackSubmit }) =>
     const [selectedBookingId, setSelectedBookingId] = useState('');
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
+    const [image, setImage] = useState(null);
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    const availableBookings = bookings.filter(b => !feedbackBookingIds.has(b._id));
+    const availableBookings = useMemo(() => bookings.filter(b => !feedbackBookingIds.has(String(b._id))), [bookings, feedbackBookingIds]);
 
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setImage(e.target.files[0]);
+        }
+    };
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedBookingId || !rating || !comment.trim()) {
@@ -429,15 +443,17 @@ const LeaveFeedbackTab = ({ bookings, feedbackBookingIds, onFeedbackSubmit }) =>
         }
 
         setSubmitting(true);
-        try {
-            const feedbackData = {
-                bookingId: selectedBookingId,
-                rating,
-                comment: comment.trim(),
-                isAnonymous
-            };
+        const formData = new FormData();
+        formData.append('bookingId', selectedBookingId);
+        formData.append('rating', rating);
+        formData.append('comment', comment.trim());
+        formData.append('isAnonymous', isAnonymous);
+        if (image) {
+            formData.append('image', image);
+        }
 
-            const response = await DataService.submitFeedback(feedbackData);
+        try {
+            const response = await DataService.submitFeedback(formData);
             
             if (response.success) {
                 alert('Feedback submitted successfully! It will be visible after admin approval.');
@@ -445,6 +461,7 @@ const LeaveFeedbackTab = ({ bookings, feedbackBookingIds, onFeedbackSubmit }) =>
                 setRating(0);
                 setComment('');
                 setIsAnonymous(false);
+                setImage(null);
                 onFeedbackSubmit();
             } else {
                 alert('Failed to submit feedback: ' + response.message);
@@ -519,6 +536,29 @@ const LeaveFeedbackTab = ({ bookings, feedbackBookingIds, onFeedbackSubmit }) =>
                         <p className="text-sm text-gray-500 mt-1">{comment.length}/1000 characters</p>
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload an Image (Optional)
+                        </label>
+                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                            <div className="space-y-1 text-center">
+                                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                                <div className="flex text-sm text-gray-600">
+                                    <label
+                                        htmlFor="feedback-file-upload"
+                                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                                    >
+                                        <span>Upload a file</span>
+                                        <input id="feedback-file-upload" name="feedback-file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" />
+                                    </label>
+                                    <p className="pl-1">or drag and drop</p>
+                                </div>
+                                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                {image && <p className="text-sm text-green-600 mt-2">{image.name}</p>}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex items-center">
                         <input
                             type="checkbox"
@@ -578,6 +618,11 @@ const PublicFeedbackTab = ({ feedback }) => (
                                 </div>
                             </div>
                             <p className="text-gray-700 mb-3">{item.comment}</p>
+                            {item.image && (
+                                <div className="mb-3">
+                                    <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border" />
+                                </div>
+                            )}
                             <p className="text-sm text-gray-500">
                                 {new Date(item.createdAt).toLocaleDateString()}
                                 <span className="mx-2">•</span>

@@ -73,7 +73,8 @@ export const submitFeedback = async (req, res) => {
             rating,
             comment,
             isAnonymous: isAnonymous || false,
-            serviceType: booking.itemType
+            serviceType: booking.itemType,
+            image: req.file ? `/uploads/feedback/${req.file.filename}` : undefined
         });
 
         await feedback.save();

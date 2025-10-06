@@ -77,7 +77,7 @@ export const createBooking = async (req, res) => {
         const finalFirstName = isUserLoggedIn ? req.user.firstName : firstName;
         const finalLastName = isUserLoggedIn ? req.user.lastName : lastName;
         const finalEmail = isUserLoggedIn ? req.user.email : email;
-        const finalPhone = isUserLoggedIn ? req.user.phone : phone;
+        const finalPhone = phone || (isUserLoggedIn ? req.user.phone : '');
 
         if (!itemType || !itemId || !startDate) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -142,6 +142,9 @@ export const createBooking = async (req, res) => {
 
     } catch (error) {
         console.error('Error creating booking:', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         res.status(500).json({ success: false, message: 'An internal server error occurred.' });
     }
 };

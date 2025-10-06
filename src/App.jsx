@@ -20,6 +20,7 @@ import Contact from './pages/Contact.jsx';
 import NotFound from './pages/NotFound.jsx';
 import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import ResetPassword from './pages/auth/ResetPassword.jsx';
+import PublicFeedback from './pages/PublicFeedback.jsx';
 
 // Customer Pages
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
@@ -108,6 +109,7 @@ return (
           <Route path="/tours" element={<Tours />} />
           <Route path="/tours/:id" element={<TourDetails />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/feedback" element={<PublicFeedback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route

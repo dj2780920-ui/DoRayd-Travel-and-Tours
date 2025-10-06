@@ -23,6 +23,9 @@ const feedbackSchema = new mongoose.Schema({
     trim: true, 
     maxlength: 1000 
   },
+  image: { 
+    type: String 
+  },
   isApproved: { 
     type: Boolean, 
     default: false 
