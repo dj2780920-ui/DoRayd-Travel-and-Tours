@@ -15,7 +15,8 @@ export const submitReview = async (req, res) => {
         if (booking.status !== 'completed') {
             return res.status(400).json({ success: false, message: 'You can only review completed bookings.' });
         }
-        if (booking.user.toString() !== req.user.id) {
+        // FIX: Ensure booking.user exists before checking the ID
+        if (!booking.user || booking.user.toString() !== req.user.id) {
             return res.status(403).json({ success: false, message: 'You can only review your own bookings.' });
         }
 
@@ -57,7 +58,8 @@ export const submitFeedback = async (req, res) => {
         if (booking.status !== 'completed') {
             return res.status(400).json({ success: false, message: 'You can only provide feedback for completed bookings.' });
         }
-        if (booking.user.toString() !== req.user.id) {
+        // FIX: Ensure booking.user exists before checking the ID
+        if (!booking.user || booking.user.toString() !== req.user.id) {
             return res.status(403).json({ success: false, message: 'You can only provide feedback for your own bookings.' });
         }
 

@@ -50,11 +50,14 @@ export const getAllBookings = async (req, res) => {
 // Get bookings for the currently authenticated user
 export const getMyBookings = async (req, res) => {
     try {
-        // UPDATED: Removed 'archived: false' from the query
         const bookings = await Booking.find({ user: req.user.id })
             .populate('itemId')
             .sort({ createdAt: -1 });
-        res.json({ success: true, data: bookings });
+        
+        // FIX: Filter out bookings where the associated item has been deleted
+        const validBookings = bookings.filter(booking => booking.itemId);
+
+        res.json({ success: true, data: validBookings });
     } catch (error) {
         console.error('Error fetching user bookings:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
