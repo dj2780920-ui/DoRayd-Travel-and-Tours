@@ -87,6 +87,13 @@ app.get('*', (req, res) => {
 // Socket.io Connection Handler
 io.on('connection', (socket) => {
   console.log('✅ A user connected via WebSocket');
+
+  // Assign user to a room based on their role for targeted notifications
+  socket.on('join', (role) => {
+    socket.join(role);
+    console.log(`User joined ${role} room`);
+  });
+
   socket.on('disconnect', () => {
     console.log('🔌 User disconnected');
   });

@@ -10,15 +10,19 @@ import {
     User,
     Heart,
     Award,
-    Upload
+    Upload,
+    Bell
 } from 'lucide-react';
 import { useAuth } from '../../components/Login.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
 import DataService, { SERVER_URL } from '../../components/services/DataService.jsx';
+import { useSocket } from '../../hooks/useSocket.jsx';
+import NotificationBell from '../../components/shared/NotificationBell.jsx';
 
 const CustomerDashboard = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
+    const { notifications, clearNotifications } = useSocket();
 
     // Fetch user data
     const { data: bookingsData, loading: bookingsLoading, refetch: refetchBookings } = useApi(DataService.fetchUserBookings, [user]);
@@ -62,9 +66,14 @@ const CustomerDashboard = () => {
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
-                    <p className="text-gray-600 mt-2">Manage your bookings, reviews, and account settings</p>
+                <div className="mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
+                        <p className="text-gray-600 mt-2">Manage your bookings, reviews, and account settings</p>
+                    </div>
+                    <div>
+                        <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
+                    </div>
                 </div>
 
                 {/* Stats Grid */}

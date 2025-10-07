@@ -30,6 +30,23 @@ const ManageBookings = () => {
       setUpdating(false);
     }
   };
+  
+  const handleCancelBooking = async (bookingId) => {
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      setUpdating(true);
+      try {
+        await DataService.cancelBooking(bookingId, adminNotes);
+        alert('Booking cancelled successfully!');
+        setShowModal(false);
+        fetchBookings();
+      } catch (error) {
+        console.error('Error cancelling booking:', error);
+        alert('Failed to cancel booking');
+      } finally {
+        setUpdating(false);
+      }
+    }
+  };
 
   const viewBooking = (booking) => {
     setSelectedBooking(booking);
@@ -262,7 +279,10 @@ const ManageBookings = () => {
                     </div>
                   )}
                   {selectedBooking.status === 'confirmed' && (
-                    <button onClick={() => handleStatusUpdate(selectedBooking._id, 'completed')} disabled={updating} className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"><Check size={16} /> Mark as Completed</button>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleStatusUpdate(selectedBooking._id, 'completed')} disabled={updating} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"><Check size={16} /> Mark as Completed</button>
+                      <button onClick={() => handleCancelBooking(selectedBooking._id)} disabled={updating} className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"><X size={16} /> Cancel Booking</button>
+                    </div>
                   )}
                 </div>
               </div>

@@ -16,7 +16,14 @@ export const createMessage = async (req, res) => {
     await message.save();
     
     const io = req.app.get('io');
-    io.emit('new-message', message);
+    if (io) {
+        const notification = {
+            message: `New message from ${message.name}`,
+            link: '/owner/messages',
+            messageObj: message
+        };
+      io.to('admin').to('employee').emit('new-message', notification);
+    }
     
     res.status(201).json({ success: true, data: message });
   } catch (error) {
@@ -34,10 +41,20 @@ export const replyToMessage = async (req, res) => {
     message.status = 'replied';
     await message.save();
     
-    await EmailService.sendContactReply(message, replyMessage);
+    // Prepare attachment if it exists
+    const attachments = [];
+    if (req.file) {
+        attachments.push({
+            filename: req.file.originalname,
+            path: req.file.path
+        });
+    }
+
+    await EmailService.sendContactReply(message, replyMessage, attachments);
     
     res.json({ success: true, data: message });
   } catch (error) {
+    console.error('Error replying to message:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };

@@ -38,6 +38,24 @@ export const createCar = async (req, res) => {
   try {
     const car = new Car({ ...req.body, owner: req.user.id });
     await car.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      // Notify customers about the new car
+      io.to('customer').emit('new-car', {
+          message: `New car available: ${car.brand} ${car.model}`,
+          link: `/cars/${car._id}`
+      });
+
+      // Notify admin if an employee added the car
+      if (req.user.role === 'employee') {
+          io.to('admin').emit('activity-log', {
+              message: `Employee ${req.user.firstName} ${req.user.lastName} added a new car: ${car.brand} ${car.model}`,
+              link: '/owner/manage-cars'
+          });
+      }
+    }
+    
     res.status(201).json({ success: true, data: car });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -48,6 +66,16 @@ export const updateCar = async (req, res) => {
   try {
     const car = await Car.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
+
+    // Notify admin if an employee updated the car
+    const io = req.app.get('io');
+    if (io && req.user.role === 'employee') {
+        io.to('admin').emit('activity-log', {
+            message: `Employee ${req.user.firstName} ${req.user.lastName} updated the car: ${car.brand} ${car.model}`,
+            link: '/owner/manage-cars'
+        });
+    }
+
     res.json({ success: true, data: car });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -58,6 +86,16 @@ export const archiveCar = async (req, res) => {
   try {
     const car = await Car.findByIdAndUpdate(req.params.id, { archived: true, isAvailable: false }, { new: true });
     if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
+
+    // Notify admin if an employee archived the car
+    const io = req.app.get('io');
+    if (io && req.user.role === 'employee') {
+        io.to('admin').emit('activity-log', {
+            message: `Employee ${req.user.firstName} ${req.user.lastName} archived the car: ${car.brand} ${car.model}`,
+            link: '/owner/manage-cars'
+        });
+    }
+
     res.json({ success: true, message: "Car archived successfully", data: car });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error' });

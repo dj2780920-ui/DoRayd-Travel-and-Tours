@@ -10,6 +10,7 @@ import DataService from '../../components/services/DataService.jsx';
 import BookingCalendar from './BookingCalendar';
 import { useSocket } from '../../hooks/useSocket.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
+import NotificationBell from '../../components/shared/NotificationBell.jsx';
 
 // Re-usable helper components
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -19,7 +20,7 @@ const AdminDashboard = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useAuth();
-    const { socket } = useSocket();
+    const { socket, notifications, clearNotifications } = useSocket();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     
@@ -107,7 +108,7 @@ const AdminDashboard = () => {
                         </Link>
                     ))}
                 </nav>
-                <div className="p-4 border-t">
+                <div className="p-4 border-t absolute bottom-0 w-full">
                     <p className="font-semibold">{user?.firstName} {user?.lastName}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                     <button onClick={handleLogout} className="w-full mt-2 text-left flex items-center text-sm text-red-600 hover:bg-red-50 p-2 rounded-lg">
@@ -121,7 +122,9 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between h-16 px-4">
                         <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500"><Menu /></button>
                         <h1 className="text-xl font-bold text-slate-800">{navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Dashboard'}</h1>
-                        <div></div>
+                        <div>
+                            <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
+                        </div>
                     </div>
                 </header>
                 <main className="flex-1 p-6 overflow-y-auto">

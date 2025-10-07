@@ -5,7 +5,8 @@ import {
     updateBookingStatus,
     getMyBookings,
     uploadPaymentProof,
-    getBookingAvailability
+    getBookingAvailability,
+    cancelBooking
 } from '../controllers/bookingsController.js';
 import { auth, authorize } from '../middleware/auth.js';
 import { optionalAuth } from '../middleware/optionalAuth.js'; // Import the new middleware
@@ -30,6 +31,9 @@ router.route('/my-bookings')
 
 router.route('/:id/status')
     .put(auth, checkPermission('bookings', 'write'), updateBookingStatus);
+
+router.route('/:id/cancel')
+    .patch(auth, checkPermission('bookings', 'write'), cancelBooking);
 
 router.route('/:id/payment-proof')
     .post(auth, authorize('customer'), upload.single('paymentProof'), uploadPaymentProof);

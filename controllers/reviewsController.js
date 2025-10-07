@@ -38,6 +38,17 @@ export const submitReview = async (req, res) => {
         });
 
         await review.save();
+        
+        const io = req.app.get('io');
+        if (io) {
+            const notification = {
+                message: 'A new review has been submitted for approval.',
+                link: '/owner/manage-reviews',
+                review
+            };
+            io.to('admin').to('employee').emit('new-review', notification);
+        }
+
         res.status(201).json({ success: true, data: review });
     } catch (error) {
         console.error('Error submitting review:', error);
@@ -186,6 +197,16 @@ export const approveReview = async (req, res) => {
         if (!review) {
             return res.status(404).json({ success: false, message: 'Review not found.' });
         }
+
+        // Notify admin if an employee approved the review
+        const io = req.app.get('io');
+        if (io && req.user.role === 'employee') {
+            io.to('admin').emit('activity-log', {
+                message: `Employee ${req.user.firstName} ${req.user.lastName} approved a review.`,
+                link: '/owner/manage-reviews'
+            });
+        }
+
         res.json({ success: true, data: review });
     } catch (error) {
         console.error('Error approving review:', error);
@@ -204,6 +225,16 @@ export const approveFeedback = async (req, res) => {
         if (!feedback) {
             return res.status(404).json({ success: false, message: 'Feedback not found.' });
         }
+
+        // Notify admin if an employee approved the feedback
+        const io = req.app.get('io');
+        if (io && req.user.role === 'employee') {
+            io.to('admin').emit('activity-log', {
+                message: `Employee ${req.user.firstName} ${req.user.lastName} approved feedback.`,
+                link: '/owner/manage-feedback'
+            });
+        }
+
         res.json({ success: true, data: feedback });
     } catch (error) {
         console.error('Error approving feedback:', error);
@@ -222,6 +253,16 @@ export const disapproveReview = async (req, res) => {
         if (!review) {
             return res.status(404).json({ success: false, message: 'Review not found.' });
         }
+
+        // Notify admin if an employee disapproved the review
+        const io = req.app.get('io');
+        if (io && req.user.role === 'employee') {
+            io.to('admin').emit('activity-log', {
+                message: `Employee ${req.user.firstName} ${req.user.lastName} disapproved a review.`,
+                link: '/owner/manage-reviews'
+            });
+        }
+
         res.json({ success: true, data: review });
     } catch (error) {
         console.error('Error disapproving review:', error);
@@ -240,6 +281,16 @@ export const disapproveFeedback = async (req, res) => {
         if (!feedback) {
             return res.status(404).json({ success: false, message: 'Feedback not found.' });
         }
+        
+        // Notify admin if an employee disapproved the feedback
+        const io = req.app.get('io');
+        if (io && req.user.role === 'employee') {
+            io.to('admin').emit('activity-log', {
+                message: `Employee ${req.user.firstName} ${req.user.lastName} disapproved feedback.`,
+                link: '/owner/manage-feedback'
+            });
+        }
+
         res.json({ success: true, data: feedback });
     } catch (error) {
         console.error('Error disapproving feedback:', error);

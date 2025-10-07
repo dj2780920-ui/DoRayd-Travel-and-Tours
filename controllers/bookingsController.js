@@ -131,8 +131,14 @@ export const createBooking = async (req, res) => {
             await User.findByIdAndUpdate(userId, { $push: { bookings: newBooking._id } });
         }
 
-        if (req.app.get('io')) {
-            req.app.get('io').emit('new-booking', newBooking);
+        const io = req.app.get('io');
+        if (io) {
+            const notification = {
+                message: `New booking received: ${newBooking.bookingReference}`,
+                link: '/owner/manage-bookings',
+                booking: newBooking
+            };
+            io.to('admin').to('employee').emit('new-booking', notification);
         }
         
         try {
@@ -160,29 +166,81 @@ export const updateBookingStatus = async (req, res) => {
         req.params.id, 
         { status, adminNotes, processedBy: req.user.id },
         { new: true }
-    );
+    ).populate('user');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const io = req.app.get('io');
+    if (io && booking.user) {
+      const notification = {
+        message: `Your booking ${booking.bookingReference} has been ${status}.`,
+        link: '/my-bookings',
+        booking,
+      };
+      io.to(booking.user._id.toString()).emit('booking-update', notification);
+    }
+    
     // Send automatic email for approved/rejected bookings
     try {
-        if (status === 'confirmed' || status === 'rejected') {
+        if (status === 'confirmed' || status === 'rejected' || status === 'completed') {
             await EmailService.sendStatusUpdate(booking);
         }
     } catch (emailError) {
         console.error('Failed to send status update email:', emailError);
     }
 
-    if (req.app.get('io')) {
-        req.app.get('io').emit('booking-updated', booking);
+    if (io) {
+        io.to('admin').to('employee').emit('booking-updated', booking);
     }
 
     res.json({ success: true, data: booking });
   } catch (error) {
     console.error('Error updating booking status:', error);
     res.status(500).json({ success: false, message: 'Failed to update status' });
+  }
+};
+
+// Cancel a booking
+export const cancelBooking = async (req, res) => {
+  try {
+    const { adminNotes } = req.body;
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled', adminNotes, processedBy: req.user.id },
+      { new: true }
+    ).populate('user');
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    const io = req.app.get('io');
+    if (io && booking.user) {
+        const notification = {
+            message: `Your booking ${booking.bookingReference} has been cancelled.`,
+            link: '/my-bookings',
+            booking,
+        };
+      io.to(booking.user._id.toString()).emit('booking-update', notification);
+    }
+
+    if (io) {
+      io.to('admin').to('employee').emit('booking-cancelled', booking);
+    }
+    
+    // Send cancellation email
+    try {
+        await EmailService.sendBookingCancellation(booking);
+    } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+    }
+
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking.' });
   }
 };
 
@@ -203,8 +261,9 @@ export const uploadPaymentProof = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Booking not found' });
         }
         
-        if (req.app.get('io')) {
-            req.app.get('io').emit('payment-proof-uploaded', booking);
+        const io = req.app.get('io');
+        if (io) {
+            io.to('admin').to('employee').emit('payment-proof-uploaded', booking);
         }
         
         res.json({ success: true, message: 'Payment proof uploaded successfully.', data: booking });

@@ -1,69 +1,106 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { useAuth } from '../components/Login';
 
-// FIX: Create a single socket instance outside the hook and prevent auto-connection
 const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
     autoConnect: false
 });
 
 export const useSocket = () => {
+  const { user } = useAuth();
   const [connected, setConnected] = useState(socket.connected);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    // FIX: Only attempt to connect if the socket isn't already connected.
-    // This prevents the double-mount issue in React Strict Mode.
-    if (!socket.connected) {
-        socket.connect();
+    if (user) {
+        if (!socket.connected) {
+            socket.connect();
+        }
+
+        const onConnect = () => {
+          console.log('✅ Socket connected successfully');
+          setConnected(true);
+          // Join rooms after connection is established
+          socket.emit('join', user.role);
+          if (user.role === 'customer') {
+              socket.emit('join', user._id); // Join a room for personal notifications
+          }
+        };
+
+        const onDisconnect = () => {
+          console.log('🔌 Socket disconnected');
+          setConnected(false);
+        };
+
+        const onNotification = (data) => {
+          setNotifications((prev) => [{...data, id: data.id || Date.now(), timestamp: new Date() }, ...prev]);
+        };
+        
+        // --- Admin/Employee notifications ---
+        const handleNewBooking = (data) => onNotification(data);
+        const handleNewMessage = (data) => onNotification(data);
+        const handleNewReview = (data) => onNotification(data);
+        const handleNewUser = (data) => onNotification(data);
+
+        // --- Customer notifications ---
+        const handleBookingUpdate = (data) => onNotification(data);
+        const handleNewCar = (data) => onNotification(data);
+        const handleNewTour = (data) => onNotification(data);
+
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+
+        // Register listeners based on role
+        if (user.role === 'admin' || user.role === 'employee') {
+            socket.on('new-booking', handleNewBooking);
+            socket.on('new-message', handleNewMessage);
+            socket.on('new-review', handleNewReview);
+            socket.on('new-user', handleNewUser);
+        }
+        
+        if (user.role === 'customer') {
+            socket.on('booking-update', handleBookingUpdate);
+            socket.on('new-car', handleNewCar);
+            socket.on('new-tour', handleNewTour);
+        }
+
+        // Cleanup listeners on component unmount
+        return () => {
+          socket.off('connect', onConnect);
+          socket.off('disconnect', onDisconnect);
+          socket.off('new-booking', handleNewBooking);
+          socket.off('new-message', handleNewMessage);
+          socket.off('new-review', handleNewReview);
+          socket.off('new-user', handleNewUser);
+          socket.off('booking-update', handleBookingUpdate);
+          socket.off('new-car', handleNewCar);
+          socket.off('new-tour', handleNewTour);
+        };
+    } else {
+        if (socket.connected) {
+            socket.disconnect();
+        }
     }
+  }, [user]);
 
-    const onConnect = () => {
-      console.log('✅ Socket connected successfully');
-      setConnected(true);
-    };
-
-    const onDisconnect = () => {
-      console.log('🔌 Socket disconnected');
-      setConnected(false);
-    };
-
-    const onNotification = (notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-    };
-
-    // Listen for backend events
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('new-booking', (booking) => {
-        onNotification({
-            id: booking._id || Date.now(),
-            message: `New booking received: ${booking.bookingReference}`,
-            type: 'info',
-            timestamp: new Date()
-        });
-    });
-
-    // Cleanup listeners on component unmount
-    return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('new-booking');
-    };
-  }, []); // Empty dependency array ensures this runs only once
-
-  const addNotification = useCallback((message, type = 'info') => {
-    setNotifications(prev => [{ id: Date.now(), message, type, timestamp: new Date() }, ...prev]);
+  const addNotification = useCallback((message, type = 'info', link = '#') => {
+    setNotifications(prev => [{ id: Date.now(), message, type, link, timestamp: new Date() }, ...prev]);
   }, []);
 
   const clearNotifications = useCallback(() => {
     setNotifications([]);
   }, []);
 
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   return {
-    socket, // --- ADD THIS LINE ---
+    socket,
     connected,
     notifications,
     addNotification,
     clearNotifications,
+    removeNotification,
   };
 };

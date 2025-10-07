@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MailOpen, Trash2, Reply, Star, Archive, Search, Filter, Clock, User, Send, X } from 'lucide-react';
+import { Mail, MailOpen, Trash2, Reply, Star, Archive, Search, Filter, Clock, User, Send, X, Paperclip } from 'lucide-react';
 import DataService from '../../components/services/DataService.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
 
@@ -12,6 +12,7 @@ const Messages = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [replyContent, setReplyContent] = useState('');
+  const [attachment, setAttachment] = useState(null);
   const [sendingReply, setSendingReply] = useState(false);
 
   const handleMarkAsRead = async (messageId) => {
@@ -31,10 +32,17 @@ const Messages = () => {
 
     setSendingReply(true);
     try {
-      await DataService.replyToMessage(selectedMessage._id, replyContent);
+      const formData = new FormData();
+      formData.append('replyMessage', replyContent);
+      if (attachment) {
+        formData.append('attachment', attachment);
+      }
+
+      await DataService.replyToMessage(selectedMessage._id, formData);
       alert('Reply sent successfully!');
       setShowReplyModal(false);
       setReplyContent('');
+      setAttachment(null);
       fetchMessages();
     } catch (error) {
       console.error('Error sending reply:', error);
@@ -329,6 +337,20 @@ const Messages = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Type your reply here..."
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Attach File (Optional)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="attachment-upload" className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+                        <Paperclip className="w-4 h-4 inline-block mr-2"/>
+                        Choose File
+                    </label>
+                    <input id="attachment-upload" type="file" className="hidden" onChange={(e) => setAttachment(e.target.files[0])} />
+                    {attachment && <span className="text-sm text-gray-600">{attachment.name}</span>}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">

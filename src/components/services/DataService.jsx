@@ -209,6 +209,15 @@ const DataService = {
       return handleError(error);
     }
   },
+  
+  cancelBooking: async (id, adminNotes) => {
+    try {
+      const response = await axios.patch(`${API_URL}/bookings/${id}/cancel`, { adminNotes }, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to cancel booking.');
+    }
+  },
 
   // --- Availability Check ---
   getAvailability: async (serviceId) => {
@@ -451,6 +460,15 @@ const DataService = {
   },
 
   // --- Message Management ---
+  createMessage: async (messageData) => {
+    try {
+      const response = await axios.post(`${API_URL}/messages`, messageData);
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to create message.');
+    }
+  },
+
   fetchAllMessages: async () => {
     try {
       const response = await axios.get(`${API_URL}/messages`, { headers: getAuthHeader() });
@@ -469,9 +487,14 @@ const DataService = {
     }
   },
 
-  replyToMessage: async (messageId, replyMessage) => {
+  replyToMessage: async (messageId, formData) => {
     try {
-      const response = await axios.post(`${API_URL}/messages/${messageId}/reply`, { replyMessage }, { headers: getAuthHeader() });
+      const response = await axios.post(`${API_URL}/messages/${messageId}/reply`, formData, { 
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data',
+        }
+      });
       return response.data;
     } catch (error) {
       return handleError(error, 'Failed to send reply.');

@@ -22,6 +22,17 @@ export const register = async (req, res) => {
     });
     await user.save();
 
+    // --- NOTIFICATION ---
+    const io = req.app.get('io');
+    if (io) {
+      const notification = {
+        message: `New customer registered: ${user.firstName} ${user.lastName}`,
+        link: '/owner/customer-management'
+      };
+      io.to('admin').to('employee').emit('new-user', notification);
+    }
+    // --- END NOTIFICATION ---
+
     res.status(201).json({ success: true, message: 'User registered successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

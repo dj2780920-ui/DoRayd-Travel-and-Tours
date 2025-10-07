@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import DataService from '../components/services/DataService';
+import { useApi } from '../hooks/useApi';
 
 const Contact = () => {
   console.log('📞 Contact page loaded at 2025-09-03 15:25:11');
@@ -65,7 +66,7 @@ const Contact = () => {
     setSubmitSuccess(false);
 
     // Basic validation
-    if (!formData.name || !formData.email || !formData.message) {
+    if (!formData.name || !formData.email || !formData.message || !formData.subject) {
       setSubmitError('Please fill in all required fields');
       setSubmitting(false);
       return;
@@ -78,7 +79,7 @@ const Contact = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
-        subject: formData.subject.trim() || 'General Inquiry',
+        subject: formData.subject.trim(),
         message: formData.message.trim(),
         source: 'contact_form',
         createdAt: new Date().toISOString(),
@@ -256,11 +257,12 @@ const Contact = () => {
 
                 <div>
                   <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                    Subject
+                    Subject *
                   </label>
                   <select
                     id="subject"
                     name="subject"
+                    required
                     value={formData.subject}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

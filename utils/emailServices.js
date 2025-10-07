@@ -173,6 +173,50 @@ class EmailService {
     }
   }
 
+    async sendBookingCancellation(booking) {
+    try {
+      await this.ensureReady();
+  
+      const mailOptions = {
+        from: `"DoRayd Travel & Tours" <${process.env.EMAIL_USER}>`,
+        to: booking.email,
+        subject: `Booking Cancellation: ${booking.bookingReference}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #9E9E9E; color: white; padding: 20px; text-align: center;">
+              <h1>Booking Cancelled</h1>
+            </div>
+            <div style="padding: 20px; background-color: #f9f9f9;">
+              <p>Dear <strong>${booking.firstName} ${booking.lastName}</strong>,</p>
+              <p>This email is to confirm that your booking has been cancelled.</p>
+
+              <div style="background-color: white; padding: 15px; border-radius: 5px;">
+                <h3>Booking Details:</h3>
+                <p><strong>Reference:</strong> ${booking.bookingReference}</p>
+                <p><strong>Service:</strong> ${booking.itemName}</p>
+              </div>
+              
+              ${booking.adminNotes ? `
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                  <h4>Notes from our team:</h4>
+                  <p>${booking.adminNotes}</p>
+                </div>` : ''}
+
+              <p>If you have any questions, please don't hesitate to contact us.</p>
+            </div>
+          </div>
+        `,
+      };
+  
+      await this.transporter.sendMail(mailOptions);
+      console.log('✅ Booking cancellation email sent to:', booking.email);
+      return { success: true, message: 'Booking cancellation email sent' };
+    } catch (error) {
+      console.error('❌ Failed to send booking cancellation email:', error.message);
+      throw error;
+    }
+  }
+
   async sendStatusUpdate(booking) {
     try {
       if (booking.status === 'confirmed') {
@@ -206,7 +250,7 @@ class EmailService {
     }
   }
 
-  async sendContactReply(message, replyMessage) {
+    async sendContactReply(message, replyMessage, attachments = []) {
     try {
       await this.ensureReady();
 
@@ -225,6 +269,7 @@ class EmailService {
             <p>Best regards,<br>DoRayd Travel & Tours Team</p>
           </div>
         `,
+        attachments: attachments, // Add attachments here
       };
 
       await this.transporter.sendMail(mailOptions);

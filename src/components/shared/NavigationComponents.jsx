@@ -3,9 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, User, LogOut, Shield, UserCheck, Phone, Mail, MapPin, Clock, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../Login';
 import logo from '../../assets/logo.svg'; // Import the logo
+import NotificationBell from './NotificationBell';
+import { useSocket } from '../../hooks/useSocket';
 
 export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { notifications, clearNotifications } = useSocket();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -77,34 +80,37 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
 
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated && user ? (
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-                    user.role === 'admin' ? 'bg-red-600' : user.role === 'employee' ? 'bg-green-600' : 'bg-blue-600'
-                  }`}>
-                    {user.role === 'admin' ? <Shield className="w-4 h-4" /> : user.role === 'employee' ? <UserCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                  </div>
-                  <span>{user.firstName || user.email}</span>
-                </button>
-                {userMenuOpen && (
-                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                     <div className="px-4 py-2 border-b border-gray-100">
-                       <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                       <p className="text-xs text-gray-500">{user.email}</p>
-                       <p className="text-xs text-blue-600 capitalize">{user.role} Account</p>
-                     </div>
-                     <button onClick={handleDashboardAccess} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                       <LayoutDashboard className="w-4 h-4" /> My Dashboard
-                     </button>
-                     <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                       <LogOut className="w-4 h-4" /> Logout
-                     </button>
-                   </div>
-                )}
-              </div>
+              <>
+                <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+                      user.role === 'admin' ? 'bg-red-600' : user.role === 'employee' ? 'bg-green-600' : 'bg-blue-600'
+                    }`}>
+                      {user.role === 'admin' ? <Shield className="w-4 h-4" /> : user.role === 'employee' ? <UserCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                    </div>
+                    <span>{user.firstName || user.email}</span>
+                  </button>
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-blue-600 capitalize">{user.role} Account</p>
+                      </div>
+                      <button onClick={handleDashboardAccess} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                        <LayoutDashboard className="w-4 h-4" /> My Dashboard
+                      </button>
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                        <LogOut className="w-4 h-4" /> Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <>
                 <button onClick={onCustomerLogin} className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">

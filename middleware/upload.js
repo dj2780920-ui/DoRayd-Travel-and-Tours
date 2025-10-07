@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 // Define the base directory for uploads
 const uploadsDir = path.join(__dirname, '../uploads');
 
-// Function to create storage engine
+// Function to create storage engine for a specific folder
 const createStorage = (folder) => {
   return multer.diskStorage({
     destination: (req, file, cb) => {
@@ -26,7 +26,7 @@ const createStorage = (folder) => {
   });
 };
 
-// Create a generic file filter
+// Generic file filter for images and PDFs
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
     cb(null, true);
@@ -35,9 +35,15 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer with the storage engine
+// Uploader for Payment Proofs
 export const upload = multer({
-  storage: createStorage('payment_proofs'), // Default to payment_proofs, can be dynamic
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
+  storage: createStorage('payment_proofs'),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
   fileFilter: fileFilter,
+});
+
+// Uploader for Email Attachments
+export const uploadAttachment = multer({
+  storage: createStorage('attachments'),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit
 });
