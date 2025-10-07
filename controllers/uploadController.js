@@ -1,3 +1,4 @@
+// dj2780920-ui/dorayd-travel-and-tours/DoRayd-Travel-and-Tours-c3cb8116bef93292c82d4dfbf1d4d86cd66863f6/controllers/uploadController.js
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -35,16 +36,26 @@ export const uploadSingleImage = (req, res) => {
 export const deleteImage = (req, res) => {
   try {
     const { category, filename } = req.params;
-    const filePath = path.join(uploadsDir, category, filename);
 
-    console.log('Attempting to delete:', filePath);
+    // Sanitize to prevent path traversal
+    const sanitizedCategory = path.normalize(category).replace(/^(\.\.[\/\\])+/, '');
+    const sanitizedFilename = path.normalize(filename).replace(/^(\.\.[\/\\])+/, '');
 
-    if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+    const safePath = path.join(uploadsDir, sanitizedCategory, sanitizedFilename);
+
+    // Final check to ensure the path is within the uploads directory
+    if (!safePath.startsWith(uploadsDir)) {
+        return res.status(400).json({ success: false, message: 'Invalid path specified.' });
+    }
+
+    console.log('Attempting to delete:', safePath);
+
+    if (fs.existsSync(safePath)) {
+        fs.unlinkSync(safePath);
         console.log('File deleted successfully');
         res.json({ success: true, message: 'Image deleted successfully' });
     } else {
-        console.log('File not found:', filePath);
+        console.log('File not found:', safePath);
         res.status(404).json({ success: false, message: 'File not found' });
     }
   } catch (error)

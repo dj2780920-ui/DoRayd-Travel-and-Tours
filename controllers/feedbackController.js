@@ -20,9 +20,10 @@ export const createFeedback = async (req, res) => {
 // Get all feedback (Admin only)
 export const getAllFeedback = async (req, res) => {
     try {
-        const feedback = await Feedback.find().populate('user', 'firstName lastName').sort({ createdAt: -1 });
-        const validFeedback = feedback.filter(f => f.user); // Filter out feedback with null users
-        res.json({ success: true, data: validFeedback });
+        const feedback = await Feedback.find({ user: { $ne: null } }) // Optimization
+            .populate('user', 'firstName lastName')
+            .sort({ createdAt: -1 });
+        res.json({ success: true, data: feedback });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to fetch feedback.' });
     }
@@ -31,14 +32,14 @@ export const getAllFeedback = async (req, res) => {
 // Get all approved feedback (Public)
 export const getPublicFeedback = async (req, res) => {
     try {
-        const feedback = await Feedback.find({ isApproved: true }).populate('user', 'firstName lastName').sort({ createdAt: -1 });
-        const validFeedback = feedback.filter(f => f.user); // Filter out feedback with null users
-        res.json({ success: true, data: validFeedback });
+        const feedback = await Feedback.find({ isApproved: true, user: { $ne: null } }) // Optimization
+            .populate('user', 'firstName lastName')
+            .sort({ createdAt: -1 });
+        res.json({ success: true, data: feedback });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to fetch public feedback.' });
     }
 };
-
 // Approve feedback (Admin only)
 export const approveFeedback = async (req, res) => {
     try {

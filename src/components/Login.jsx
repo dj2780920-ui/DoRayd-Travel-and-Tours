@@ -1,11 +1,14 @@
+// dj2780920-ui/dorayd-travel-and-tours/DoRayd-Travel-and-Tours-c3cb8116bef93292c82d4dfbf1d4d86cd66863f6/src/components/Login.jsx
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Shield, User, UserCheck, X } from 'lucide-react';
 import DataService from '../components/services/DataService.jsx';
 
-// It's better to manage these IDs via environment variables
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
-const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || 'YOUR_FACEBOOK_APP_ID';
+// --- FIX: Load IDs from Vite's import.meta.env object ---
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
+
 
 const AuthContext = createContext(null);
 
@@ -120,13 +123,21 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
   const [showPassword, setShowPassword] = useState(false);
   const [isFbSdkReady, setIsFbSdkReady] = useState(false);
 
-  // Effect to load external SDKs
   useEffect(() => {
     if (!isOpen) return;
 
+    if (!GOOGLE_CLIENT_ID) {
+        console.warn('VITE_GOOGLE_CLIENT_ID is not configured in your .env file. Google Login will fail.');
+        setError('Google Login is not configured by the administrator.');
+    }
+    if (!FACEBOOK_APP_ID) {
+        console.warn('VITE_FACEBOOK_APP_ID is not configured in your .env file. Facebook Login will fail.');
+        setError('Facebook Login is not configured by the administrator.');
+    }
+
     // Google Script
     const googleScriptId = 'google-gsi-script';
-    if (!document.getElementById(googleScriptId)) {
+    if (!document.getElementById(googleScriptId) && GOOGLE_CLIENT_ID) {
         const googleScript = document.createElement('script');
         googleScript.id = googleScriptId;
         googleScript.src = 'https://accounts.google.com/gsi/client';
@@ -145,7 +156,7 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
 
     // Facebook Script
     const facebookScriptId = 'facebook-jssdk';
-    if (!document.getElementById(facebookScriptId)) {
+    if (!document.getElementById(facebookScriptId) && FACEBOOK_APP_ID) {
         window.fbAsyncInit = function() {
             window.FB.init({
                 appId: FACEBOOK_APP_ID,
@@ -233,16 +244,16 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
   };
 
   const handleGoogleLoginClick = () => {
-      if (window.google) {
+      if (window.google?.accounts?.id) {
         window.google.accounts.id.prompt();
       } else {
-        setError("Google Login is not ready yet. Please try again in a moment.");
+        setError("Google Login is not ready or is misconfigured. Please try again in a moment.");
       }
   };
 
   const handleFacebookLoginClick = () => {
       if (!isFbSdkReady || !window.FB) {
-        setError("Facebook Login is not ready yet. Please try again in a moment.");
+        setError("Facebook Login is not ready or is misconfigured. Please try again in a moment.");
         return;
       }
       

@@ -1,3 +1,4 @@
+// dj2780920-ui/dorayd-travel-and-tours/DoRayd-Travel-and-Tours-c3cb8116bef93292c82d4dfbf1d4d86cd66863f6/server.js
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -20,7 +21,7 @@ import tourRoutes from './routes/tours.js';
 import uploadRoutes from './routes/upload.js';
 import userRoutes from './routes/users.js';
 import reviewRoutes from './routes/reviews.js';
-import feedbackRoutes from './routes/feedback.js'; // Ensure feedback routes are imported
+import feedbackRoutes from './routes/feedback.js';
 import notificationRoutes from './routes/notification.js';
 
 // Middleware Imports
@@ -39,15 +40,23 @@ const io = new Server(server, {
 });
 const PORT = process.env.PORT || 5000;
 
-// Core Middleware
-app.use(cors());
+// --- FIX: Updated CORS Configuration ---
+const corsOptions = {
+  origin: [
+    process.env.CLIENT_URL || 'http://localhost:3000', 
+    'https://localhost:3000', 
+    'https://accounts.google.com' // Allow requests from Google's auth service
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  credentials: true,
+};
+app.use(cors(corsOptions));
+// --- END FIX ---
+
 app.use(express.json());
 app.set('io', io);
 
-// --- CORRECT ROUTING ORDER ---
-
-// 1. API Routes
-// All API calls should be handled first.
+// API Routes
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -58,7 +67,7 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/feedback', feedbackRoutes); // Ensure feedback API route is registered
+app.use('/api/feedback', feedbackRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // API Health Check
@@ -70,38 +79,30 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 2. Static Asset Routes
-// Serve uploaded files next.
+// Static Asset Routes
 const uploadsPath = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// 3. Frontend Application Route
-// This should come after all API and static routes.
-// It serves your React app's main HTML file for any non-API, non-file request.
+// Frontend Application Route
 const clientBuildPath = path.join(__dirname, 'client/dist');
 app.use(express.static(clientBuildPath));
 app.get('*', (req, res) => {
     res.sendFile(path.resolve(clientBuildPath, 'index.html'));
 });
 
-// --- END OF CORRECT ROUTING ORDER ---
-
 // Socket.io Connection Handler
 io.on('connection', (socket) => {
   console.log('✅ A user connected via WebSocket');
-
-  // Assign user to a room based on their role for targeted notifications
   socket.on('join', (role) => {
     socket.join(role);
     console.log(`User joined ${role} room`);
   });
-
   socket.on('disconnect', () => {
     console.log('🔌 User disconnected');
   });
 });
 
-// Error Handling Middleware (must be last)
+// Error Handling Middleware
 app.use(notFound);
 app.use(errorHandler);
 

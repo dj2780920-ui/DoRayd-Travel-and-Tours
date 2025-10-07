@@ -1,3 +1,4 @@
+// dj2780920-ui/dorayd-travel-and-tours/DoRayd-Travel-and-Tours-c3cb8116bef93292c82d4dfbf1d4d86cd66863f6/scripts/createAdmin.js
 import mongoose from 'mongoose';
 import User from '../models/User.js'; // Must add .js extension for local files
 import dotenv from 'dotenv';
@@ -19,12 +20,20 @@ const createAdmin = async () => {
       return;
     }
 
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      console.error('❌ Error: ADMIN_PASSWORD environment variable not set.');
+      console.log('Please run the script like this: ADMIN_PASSWORD="your_password" node scripts/createAdmin.js');
+      mongoose.connection.close();
+      return;
+    }
+
     // Create admin user
     const admin = await User.create({
       firstName: 'Admin',
       lastName: 'User',
       email: 'admin@dorayd.com',
-      password: 'admin123', 
+      password: adminPassword, 
       role: 'admin',
       phone: '+639171234567',
       isActive: true,
@@ -32,7 +41,7 @@ const createAdmin = async () => {
 
     console.log('✅ Admin user created successfully!');
     console.log(`📧 Email: ${admin.email}`);
-    console.log(`🔑 Password: admin123456`);
+    console.log(`🔑 Password was set from environment variable.`);
 
   } catch (error) {
     console.error('❌ Error creating admin:', error);
