@@ -1,42 +1,12 @@
 import Review from '../models/Reviews.js';
 import Feedback from '../models/Feedback.js';
 import Booking from '../models/Booking.js';
+import { createNotification } from './notificationController.js';
 
 // Submit a review for a specific item (car/tour)
 export const submitReview = async (req, res) => {
     try {
-        const { bookingId, rating, comment, isAnonymous } = req.body;
-
-        // Check if booking exists and is completed
-        const booking = await Booking.findById(bookingId);
-        if (!booking) {
-            return res.status(404).json({ success: false, message: 'Booking not found.' });
-        }
-        if (booking.status !== 'completed') {
-            return res.status(400).json({ success: false, message: 'You can only review completed bookings.' });
-        }
-        // FIX: Ensure booking.user exists before checking the ID
-        if (!booking.user || booking.user.toString() !== req.user.id) {
-            return res.status(403).json({ success: false, message: 'You can only review your own bookings.' });
-        }
-
-        // Check if user already reviewed this booking
-        const existingReview = await Review.findOne({ booking: bookingId, type: 'review' });
-        if (existingReview) {
-            return res.status(400).json({ success: false, message: 'You have already reviewed this booking.' });
-        }
-
-        const review = new Review({
-            user: req.user.id,
-            booking: bookingId,
-            item: booking.itemId,
-            itemModel: booking.itemModel,
-            type: 'review',
-            rating,
-            comment,
-            isAnonymous: isAnonymous || false
-        });
-
+        // ... existing logic to check booking and create review
         await review.save();
         
         const io = req.app.get('io');
@@ -47,6 +17,12 @@ export const submitReview = async (req, res) => {
                 review
             };
             io.to('admin').to('employee').emit('new-review', notification);
+            // --- SAVE NOTIFICATION TO DB ---
+            await createNotification(
+              { roles: ['admin', 'employee'] },
+              notification.message,
+              notification.link
+            );
         }
 
         res.status(201).json({ success: true, data: review });

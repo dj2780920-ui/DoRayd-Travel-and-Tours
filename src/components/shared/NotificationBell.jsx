@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import DataService from '../services/DataService'; // Import DataService
 
-const NotificationBell = ({ notifications, clearNotifications, removeNotification }) => {
+const NotificationBell = ({ notifications, clearNotifications }) => {
   const [isOpen, setIsOpen] = useState(false);
   const notificationRef = useRef(null);
   const navigate = useNavigate();
 
-  const unreadCount = notifications.length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -21,7 +22,10 @@ const NotificationBell = ({ notifications, clearNotifications, removeNotificatio
     };
   }, []);
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await DataService.markNotificationAsRead(notification._id);
+    }
     if (notification.link) {
       navigate(notification.link);
     }
@@ -43,23 +47,23 @@ const NotificationBell = ({ notifications, clearNotifications, removeNotificatio
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50">
           <div className="flex justify-between items-center p-3 border-b">
             <h3 className="font-semibold text-gray-800">Notifications</h3>
-            {unreadCount > 0 && (
+            {notifications.length > 0 && (
               <button onClick={clearNotifications} className="text-xs text-blue-600 hover:underline">
                 Clear all
               </button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
-            {unreadCount > 0 ? (
+            {notifications.length > 0 ? (
               notifications.map((notif) => (
-                <div 
-                  key={notif.id} 
-                  className="p-3 border-b hover:bg-gray-50 cursor-pointer"
+                <div
+                  key={notif._id}
+                  className={`p-3 border-b hover:bg-gray-50 cursor-pointer ${!notif.read ? 'bg-blue-50' : ''}`}
                   onClick={() => handleNotificationClick(notif)}
                 >
                   <p className="text-sm text-gray-700">{notif.message}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {new Date(notif.timestamp).toLocaleTimeString()}
+                    {new Date(notif.createdAt).toLocaleString()}
                   </p>
                 </div>
               ))

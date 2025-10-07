@@ -100,6 +100,26 @@ const DataService = {
     }
   },
 
+  // --- Notifications ---
+  fetchMyNotifications: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/notifications`, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to fetch notifications.');
+    }
+  },
+
+  markNotificationAsRead: async (id) => {
+    try {
+      const response = await axios.patch(`${API_URL}/notifications/${id}/read`, {}, { headers: getAuthHeader() });
+      return response.data;
+    } catch (error) {
+      return handleError(error, 'Failed to mark notification as read.');
+    }
+  },
+
+
   // --- File Upload ---
   uploadImage: async (file, category) => {
     const formData = new FormData();

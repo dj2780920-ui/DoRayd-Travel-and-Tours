@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import EmailService from '../utils/emailServices.js';
 import crypto from 'crypto';
+import { createNotification } from './notificationController.js';
 
 // Register a new user
 export const register = async (req, res) => {
@@ -22,7 +23,6 @@ export const register = async (req, res) => {
     });
     await user.save();
 
-    // --- NOTIFICATION ---
     const io = req.app.get('io');
     if (io) {
       const notification = {
@@ -30,8 +30,13 @@ export const register = async (req, res) => {
         link: '/owner/customer-management'
       };
       io.to('admin').to('employee').emit('new-user', notification);
+      // --- SAVE NOTIFICATION TO DB ---
+      await createNotification(
+        { roles: ['admin', 'employee'] },
+        notification.message,
+        notification.link
+      );
     }
-    // --- END NOTIFICATION ---
 
     res.status(201).json({ success: true, message: 'User registered successfully' });
   } catch (error) {

@@ -21,6 +21,7 @@ import uploadRoutes from './routes/upload.js';
 import userRoutes from './routes/users.js';
 import reviewRoutes from './routes/reviews.js';
 import feedbackRoutes from './routes/feedback.js'; // Ensure feedback routes are imported
+import notificationRoutes from './routes/notification.js';
 
 // Middleware Imports
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -58,6 +59,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/feedback', feedbackRoutes); // Ensure feedback API route is registered
+app.use('/api/notifications', notificationRoutes);
 
 // API Health Check
 app.get('/api/health', (req, res) => {

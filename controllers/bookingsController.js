@@ -3,6 +3,7 @@ import Car from '../models/Car.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
 import EmailService from '../utils/emailServices.js';
+import { createNotification } from './notificationController.js'; // <-- IMPORT HERE
 
 // Get all bookings for a specific service
 export const getBookingAvailability = async (req, res) => {
@@ -139,6 +140,12 @@ export const createBooking = async (req, res) => {
                 booking: newBooking
             };
             io.to('admin').to('employee').emit('new-booking', notification);
+            // --- SAVE NOTIFICATION TO DB ---
+            await createNotification(
+              { roles: ['admin', 'employee'] },
+              notification.message,
+              notification.link
+            );
         }
         
         try {
@@ -180,6 +187,12 @@ export const updateBookingStatus = async (req, res) => {
         booking,
       };
       io.to(booking.user._id.toString()).emit('booking-update', notification);
+      // --- SAVE NOTIFICATION TO DB ---
+      await createNotification(
+        { user: booking.user._id },
+        notification.message,
+        notification.link
+      );
     }
     
     // Send automatic email for approved/rejected bookings
@@ -224,6 +237,12 @@ export const cancelBooking = async (req, res) => {
             booking,
         };
       io.to(booking.user._id.toString()).emit('booking-update', notification);
+       // --- SAVE NOTIFICATION TO DB ---
+       await createNotification(
+        { user: booking.user._id },
+        notification.message,
+        notification.link
+      );
     }
 
     if (io) {
@@ -264,6 +283,12 @@ export const uploadPaymentProof = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.to('admin').to('employee').emit('payment-proof-uploaded', booking);
+            // --- SAVE NOTIFICATION TO DB ---
+            await createNotification(
+              { roles: ['admin', 'employee'] },
+              `Payment proof uploaded for booking ${booking.bookingReference}`,
+              '/owner/manage-bookings'
+            );
         }
         
         res.json({ success: true, message: 'Payment proof uploaded successfully.', data: booking });

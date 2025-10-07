@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../components/Login';
+import DataService from '../components/services/DataService'; // Import DataService
 
 const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
     autoConnect: false
@@ -12,6 +13,17 @@ export const useSocket = () => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
+    const fetchNotifications = async () => {
+      if (user) {
+        const response = await DataService.fetchMyNotifications();
+        if (response.success) {
+          setNotifications(response.data);
+        }
+      }
+    };
+
+    fetchNotifications();
+
     if (user) {
         if (!socket.connected) {
             socket.connect();
@@ -87,12 +99,14 @@ export const useSocket = () => {
     setNotifications(prev => [{ id: Date.now(), message, type, link, timestamp: new Date() }, ...prev]);
   }, []);
 
-  const clearNotifications = useCallback(() => {
+  const clearNotifications = useCallback(async () => {
+    // This could be enhanced to mark all as read in the database
     setNotifications([]);
   }, []);
 
-  const removeNotification = useCallback((id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const removeNotification = useCallback(async (id) => {
+    await DataService.markNotificationAsRead(id);
+    setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
   }, []);
 
   return {
