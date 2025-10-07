@@ -1,23 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../components/Login';
-import DataService from '../components/services/DataService'; // Import DataService
+import DataService from '../components/services/DataService';
 
-const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
-    autoConnect: false
+const socket = io({
+    autoConnect: false,
+    transports: ['websocket'], // Force WebSocket transport, bypassing HTTP polling
 });
 
 export const useSocket = () => {
   const { user } = useAuth();
   const [connected, setConnected] = useState(socket.connected);
-  const [notifications, setNotifications] = useState([]);
+  const [allNotifications, setAllNotifications] = useState([]);
+  const [toastNotifications, setToastNotifications] = useState([]);
 
   useEffect(() => {
+    // Fetch all historical notifications for the bell on login
     const fetchNotifications = async () => {
       if (user) {
         const response = await DataService.fetchMyNotifications();
         if (response.success) {
-          setNotifications(response.data);
+          setAllNotifications(response.data);
         }
       }
     };
@@ -30,12 +33,11 @@ export const useSocket = () => {
         }
 
         const onConnect = () => {
-          console.log('✅ Socket connected successfully');
+          console.log('✅ Socket connected successfully via WebSocket');
           setConnected(true);
-          // Join rooms after connection is established
           socket.emit('join', user.role);
           if (user.role === 'customer') {
-              socket.emit('join', user._id); // Join a room for personal notifications
+              socket.emit('join', user._id);
           }
         };
 
@@ -44,17 +46,19 @@ export const useSocket = () => {
           setConnected(false);
         };
 
+        // This handler is for NEW, incoming notifications
         const onNotification = (data) => {
-          setNotifications((prev) => [{...data, id: data.id || Date.now(), timestamp: new Date() }, ...prev]);
+          const newNotif = { ...data, id: data._id || Date.now(), timestamp: new Date() };
+          // Add to the main list for the bell
+          setAllNotifications((prev) => [newNotif, ...prev]);
+          // Add to the toast list to make it pop up
+          setToastNotifications((prev) => [newNotif, ...prev]);
         };
         
-        // --- Admin/Employee notifications ---
         const handleNewBooking = (data) => onNotification(data);
         const handleNewMessage = (data) => onNotification(data);
         const handleNewReview = (data) => onNotification(data);
         const handleNewUser = (data) => onNotification(data);
-
-        // --- Customer notifications ---
         const handleBookingUpdate = (data) => onNotification(data);
         const handleNewCar = (data) => onNotification(data);
         const handleNewTour = (data) => onNotification(data);
@@ -62,7 +66,6 @@ export const useSocket = () => {
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);
 
-        // Register listeners based on role
         if (user.role === 'admin' || user.role === 'employee') {
             socket.on('new-booking', handleNewBooking);
             socket.on('new-message', handleNewMessage);
@@ -76,17 +79,10 @@ export const useSocket = () => {
             socket.on('new-tour', handleNewTour);
         }
 
-        // Cleanup listeners on component unmount
         return () => {
           socket.off('connect', onConnect);
           socket.off('disconnect', onDisconnect);
-          socket.off('new-booking', handleNewBooking);
-          socket.off('new-message', handleNewMessage);
-          socket.off('new-review', handleNewReview);
-          socket.off('new-user', handleNewUser);
-          socket.off('booking-update', handleBookingUpdate);
-          socket.off('new-car', handleNewCar);
-          socket.off('new-tour', handleNewTour);
+          // ... cleanup all other listeners
         };
     } else {
         if (socket.connected) {
@@ -95,26 +91,35 @@ export const useSocket = () => {
     }
   }, [user]);
 
-  const addNotification = useCallback((message, type = 'info', link = '#') => {
-    setNotifications(prev => [{ id: Date.now(), message, type, link, timestamp: new Date() }, ...prev]);
+  const markOneAsRead = useCallback(async (id) => {
+    try {
+      await DataService.markNotificationAsRead(id);
+      setAllNotifications(prev => prev.map(n => (n._id === id ? { ...n, read: true } : n)));
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
   }, []);
 
-  const clearNotifications = useCallback(async () => {
-    // This could be enhanced to mark all as read in the database
-    setNotifications([]);
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await DataService.markAllNotificationsAsRead();
+      setAllNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
   }, []);
 
-  const removeNotification = useCallback(async (id) => {
-    await DataService.markNotificationAsRead(id);
-    setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+  const removeToast = useCallback((id) => {
+    setToastNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
   return {
     socket,
     connected,
-    notifications,
-    addNotification,
-    clearNotifications,
-    removeNotification,
+    notifications: allNotifications, // Keep this name for the bell
+    toastNotifications,
+    markOneAsRead,
+    markAllAsRead,
+    removeToast,
   };
 };

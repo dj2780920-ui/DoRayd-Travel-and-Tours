@@ -33,7 +33,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || '*',
+    origin: [process.env.CLIENT_URL || 'http://localhost:3000', 'https://localhost:3000'],
     methods: ['GET', 'POST'],
   },
 });
@@ -78,7 +78,7 @@ app.use('/uploads', express.static(uploadsPath));
 // 3. Frontend Application Route
 // This should come after all API and static routes.
 // It serves your React app's main HTML file for any non-API, non-file request.
-const clientBuildPath = path.join(__dirname, '../client/dist'); // Adjust if your client build folder is different
+const clientBuildPath = path.join(__dirname, 'client/dist');
 app.use(express.static(clientBuildPath));
 app.get('*', (req, res) => {
     res.sendFile(path.resolve(clientBuildPath, 'index.html'));

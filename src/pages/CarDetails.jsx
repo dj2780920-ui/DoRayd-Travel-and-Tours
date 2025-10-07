@@ -6,8 +6,8 @@ import DataService, { SERVER_URL } from '../components/services/DataService';
 import BookingModal from '../components/BookingModal';
 
 // --- Reviews Section Component ---
-const ReviewsSection = ({ carId }) => {
-  const { data: reviewsData, loading: reviewsLoading } = useApi(() => DataService.fetchReviewsForItem(carId), [carId]);
+const ReviewsSection = ({ itemId }) => {
+  const { data: reviewsData, loading: reviewsLoading } = useApi(() => DataService.fetchReviewsForItem(itemId), [itemId]);
   const reviews = reviewsData?.data || [];
 
   if (reviewsLoading) return <div className="text-center p-4">Loading reviews...</div>;
@@ -58,10 +58,6 @@ const CarDetails = () => {
   // Fetch car details
   const { data: carData, loading, error } = useApi(() => DataService.fetchCarById(id), [id]);
   const car = carData?.data;
-
-  // Fetch approved reviews for this car
-  const { data: reviewsData, loading: reviewsLoading } = useApi(() => DataService.fetchReviewsForItem(id), [id]);
-  const reviews = reviewsData?.data;
 
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [mainImage, setMainImage] = useState('');
@@ -193,7 +189,7 @@ const CarDetails = () => {
               )}
 
               {/* Reviews Section */}
-              <ReviewsSection reviews={reviews} loading={reviewsLoading} />
+              <ReviewsSection itemId={id} />
 
             </div>
           </div>

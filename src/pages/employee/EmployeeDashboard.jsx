@@ -4,12 +4,9 @@ import {
   LayoutDashboard, Car, MapPin, Calendar, MessageSquare, LogOut, Menu, X, FileText, Settings
 } from 'lucide-react';
 import { useAuth } from '../../components/Login.jsx';
-import { useSocket } from '../../hooks/useSocket.jsx';
-import NotificationBell from '../../components/shared/NotificationBell.jsx';
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();
-  const { notifications, clearNotifications } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -80,9 +77,7 @@ const EmployeeDashboard = () => {
                 <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden mr-4 text-gray-600"><Menu size={24} /></button>
                 <h1 className="text-xl font-semibold">{currentNavItem?.name || 'Dashboard'}</h1>
             </div>
-            <div>
-              <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
-            </div>
+            {/* The global notification bell is in the main Navbar, so no need for another one here */}
         </header>
         
         <main className="flex-1 overflow-y-auto bg-gray-100 p-6">

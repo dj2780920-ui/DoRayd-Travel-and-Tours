@@ -118,6 +118,7 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isFbSdkReady, setIsFbSdkReady] = useState(false);
 
   // Effect to load external SDKs
   useEffect(() => {
@@ -152,6 +153,7 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
                 xfbml: true,
                 version: 'v18.0'
             });
+            setIsFbSdkReady(true);
         };
         const facebookScript = document.createElement('script');
         facebookScript.id = facebookScriptId;
@@ -160,6 +162,10 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
         facebookScript.defer = true;
         facebookScript.crossOrigin = 'anonymous';
         document.body.appendChild(facebookScript);
+    } else {
+      if (window.FB) {
+        setIsFbSdkReady(true);
+      }
     }
   }, [isOpen]);
 
@@ -212,9 +218,14 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
       setLoading(true);
       setError('');
       const result = await socialLogin('google', { credential: response.credential });
-      if (result.success && result.user.role === 'customer') {
+      if (result.success) {
           onClose();
-          navigate('/my-bookings', { replace: true });
+        switch (result.user.role) {
+          case 'admin': navigate('/owner/dashboard', { replace: true }); break;
+          case 'employee': navigate('/employee/dashboard', { replace: true }); break;
+          case 'customer': navigate('/my-bookings', { replace: true }); break;
+          default: navigate('/');
+        }
       } else {
           setError(result.message || "Login failed.");
       }
@@ -230,26 +241,47 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
   };
 
   const handleFacebookLoginClick = () => {
-      if (window.FB) {
-          window.FB.login(async (response) => {
-              if (response.authResponse) {
-                  setLoading(true);
-                  setError('');
-                  const result = await socialLogin('facebook', { accessToken: response.authResponse.accessToken });
-                  if (result.success && result.user.role === 'customer') {
-                      onClose();
-                      navigate('/my-bookings', { replace: true });
-                  } else {
-                      setError(result.message);
-                  }
-                  setLoading(false);
-              } else {
-                  setError('Facebook login was cancelled or failed.');
-              }
-          }, { scope: 'email,public_profile' });
-      } else {
-          setError("Facebook Login is not ready yet. Please try again in a moment.");
+      if (!isFbSdkReady || !window.FB) {
+        setError("Facebook Login is not ready yet. Please try again in a moment.");
+        return;
       }
+      
+      window.FB.login(
+        (response) => {
+          if (response.authResponse) {
+            setLoading(true);
+            setError('');
+            const processFacebookLogin = async () => {
+              const result = await socialLogin('facebook', {
+                accessToken: response.authResponse.accessToken,
+              });
+              if (result.success) {
+                onClose();
+                switch (result.user.role) {
+                  case 'admin':
+                    navigate('/owner/dashboard', { replace: true });
+                    break;
+                  case 'employee':
+                    navigate('/employee/dashboard', { replace: true });
+                    break;
+                  case 'customer':
+                    navigate('/my-bookings', { replace: true });
+                    break;
+                  default:
+                    navigate('/');
+                }
+              } else {
+                setError(result.message);
+              }
+              setLoading(false);
+            };
+            processFacebookLogin();
+          } else {
+            setError('Facebook login was cancelled or failed.');
+          }
+        },
+        { scope: 'email,public_profile' }
+      );
   };
 
   const handleInputChange = (e) => {
@@ -302,8 +334,14 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
                   <button onClick={handleGoogleLoginClick} type="button" className="w-full flex justify-center items-center gap-3 py-3 border rounded-lg text-gray-700 font-medium hover:bg-gray-50">
                       <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/5a73199f1bb1d3ea89b40297fa0cb3c5a5d23d64a09d3c0065afa4619abb32ce?apiKey=597363a3080546f9b072bf59bebbfd17&" alt="Google" className="w-5 h-5"/> Continue with Google
                   </button>
-                  <button onClick={handleFacebookLoginClick} type="button" className="w-full flex justify-center items-center gap-3 py-3 border rounded-lg text-gray-700 font-medium hover:bg-gray-50">
-                      <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/3feb9724a7eb37edc68e698d2bf9cfdafff2e78a2d0733da73a89c1beed3d397?apiKey=597363a3080546f9b072bf59bebbfd17&" alt="Facebook" className="w-5 h-5"/> Continue with Facebook
+                  <button
+                    onClick={handleFacebookLoginClick}
+                    type="button"
+                    disabled={!isFbSdkReady}
+                    className="w-full flex justify-center items-center gap-3 py-3 border rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/3feb9724a7eb37edc68e698d2bf9cfdafff2e78a2d0733da73a89c1beed3d397?apiKey=597363a3080546f9b072bf59bebbfd17&" alt="Facebook" className="w-5 h-5"/>
+                      {isFbSdkReady ? 'Continue with Facebook' : 'Loading Facebook...'}
                   </button>
                 </div>
               </>
@@ -320,4 +358,3 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
     </div>
   );
 }
-

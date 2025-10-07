@@ -1,22 +1,21 @@
 // src/components/shared/NavigationComponents.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Shield, UserCheck, Phone, Mail, MapPin, Clock, LayoutDashboard, Bell } from 'lucide-react';
+import { Menu, X, User, LogOut, Shield, UserCheck, Phone, Mail, MapPin, Clock, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../Login';
 import logo from '../../assets/logo.svg';
 import { useSocket } from '../../hooks/useSocket';
+import NotificationBell from './NotificationBell.jsx'; // Import the correct component
 
-export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
+export const Navbar = ({ onCustomerLogin, onStaffLogin, onRegister }) => {
   const { isAuthenticated, user, logout } = useAuth();
-  const { notifications, clearNotifications } = useSocket();
+  const { notifications, markOneAsRead, markAllAsRead } = useSocket();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const userMenuRef = useRef(null);
-  const notificationRef = useRef(null);
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -31,9 +30,6 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
-      }
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setNotificationOpen(false);
       }
     };
 
@@ -57,8 +53,6 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
     navigate(path);
     setUserMenuOpen(false);
   };
-
-  const unreadNotifications = notifications?.filter(n => !n.read) || [];
 
   return (
     <nav className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-gray-200/50">
@@ -98,65 +92,13 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
           <div className="flex items-center space-x-2">
             {isAuthenticated && user ? (
               <div className="flex items-center space-x-2">
-                {/* Unified Notification Bell */}
-                <div className="relative" ref={notificationRef}>
-                  <button
-                    onClick={() => setNotificationOpen(!notificationOpen)}
-                    className="relative p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300"
-                  >
-                    <Bell className="h-5 w-5" />
-                    {unreadNotifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium animate-pulse">
-                        {unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Notification Dropdown */}
-                  {notificationOpen && (
-                    <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
-                          {unreadNotifications.length > 0 && (
-                            <button
-                              onClick={() => {
-                                clearNotifications();
-                                setNotificationOpen(false);
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              Mark all as read
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {notifications && notifications.length > 0 ? (
-                          notifications.slice(0, 5).map((notification, index) => (
-                            <div
-                              key={index}
-                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                                !notification.read ? 'bg-blue-50/50' : ''
-                              }`}
-                            >
-                              <p className="text-sm text-gray-900 font-medium">{notification.title}</p>
-                              <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {new Date(notification.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-8 text-center text-gray-500">
-                            <Bell className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">No notifications</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                
+                {/* Use the functional NotificationBell component with correct props */}
+                <NotificationBell 
+                  notifications={notifications} 
+                  markOneAsRead={markOneAsRead}
+                  markAllAsRead={markAllAsRead} 
+                />
 
                 {/* User Menu */}
                 <div className="relative" ref={userMenuRef}>
@@ -219,13 +161,13 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
             ) : (
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={onCustomerLogin}
                   className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 rounded-full transition-colors"
                 >
                   Sign In
                 </button>
                 <button
-                  onClick={() => navigate('/register')}
+                  onClick={onRegister}
                   className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
                 >
                   Get Started

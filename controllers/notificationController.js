@@ -62,3 +62,12 @@ export const markAsRead = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
+
+export const markAllAsRead = async (req, res) => {
+  try {
+    await Notification.updateMany({ user: req.user.id, read: false }, { $set: { read: true } });
+    res.json({ success: true, message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, X } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import DataService from '../services/DataService'; // Import DataService
+import DataService from '../services/DataService';
 
-const NotificationBell = ({ notifications, clearNotifications }) => {
+const NotificationBell = ({ notifications, markOneAsRead, markAllAsRead }) => {
   const [isOpen, setIsOpen] = useState(false);
   const notificationRef = useRef(null);
   const navigate = useNavigate();
@@ -24,8 +24,7 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
 
   const handleNotificationClick = async (notification) => {
     if (!notification.read) {
-      // This logic remains unchanged
-      await DataService.markNotificationAsRead(notification._id);
+      await markOneAsRead(notification._id);
     }
     if (notification.link) {
       navigate(notification.link);
@@ -34,12 +33,9 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
   };
 
   const handleClearAll = () => {
-    // This logic remains unchanged
-    clearNotifications();
-    setIsOpen(false);
-  }
+    markAllAsRead();
+  };
 
-  // Helper to format time difference
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -60,7 +56,6 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
 
   return (
     <div className="relative" ref={notificationRef}>
-      {/* The bell icon trigger remains the same */}
       <button onClick={() => setIsOpen(!isOpen)} className="relative p-2 rounded-full hover:bg-gray-100">
         <Bell className="w-6 h-6 text-gray-600" />
         {unreadCount > 0 && (
@@ -70,16 +65,13 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
         )}
       </button>
 
-      {/* New Card-based Notification Panel */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-[380px] bg-white rounded-xl shadow-2xl border z-50">
-          {/* Card Header */}
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
             <p className="text-sm text-gray-500">You have {unreadCount} unread messages.</p>
           </div>
 
-          {/* Card Content */}
           <div className="p-4 max-h-80 overflow-y-auto">
             {notifications.length > 0 ? (
               notifications.map((notif) => (
@@ -88,9 +80,11 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
                   onClick={() => handleNotificationClick(notif)}
                   className="mb-4 grid grid-cols-[25px_1fr] items-start pb-4 last:mb-0 last:pb-0 cursor-pointer group"
                 >
-                  {!notif.read && (
-                    <span className="flex h-2 w-2 translate-y-1 rounded-full bg-sky-500" />
-                  )}
+                  <div className="flex items-center justify-center h-full">
+                    {!notif.read && (
+                      <span className="flex h-2 w-2 rounded-full bg-sky-500" />
+                    )}
+                  </div>
                   <div className="space-y-1 group-hover:bg-gray-50 p-2 rounded-md">
                     <p className="text-sm font-medium leading-none text-gray-800">
                       {notif.message}
@@ -106,7 +100,6 @@ const NotificationBell = ({ notifications, clearNotifications }) => {
             )}
           </div>
 
-          {/* Card Footer */}
           {notifications.length > 0 && (
             <div className="p-4 border-t bg-gray-50 rounded-b-xl">
               <button onClick={handleClearAll} className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">

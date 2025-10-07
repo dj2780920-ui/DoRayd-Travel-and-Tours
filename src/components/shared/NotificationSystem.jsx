@@ -1,17 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { useSocket } from "../../hooks/useSocket.jsx";
 
 const NotificationSystem = () => {
-  const { notifications } = useSocket();
-  const [visibleNotifications, setVisibleNotifications] = useState([]);
+  const { toastNotifications, removeToast, markOneAsRead } = useSocket();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setVisibleNotifications(notifications);
-  }, [notifications]);
+    if (toastNotifications.length > 0) {
+      const latestToast = toastNotifications[0];
+      const timer = setTimeout(() => {
+        removeToast(latestToast.id);
+      }, 5000); // Auto-dismiss after 5 seconds
 
-  const removeNotification = (id) => {
-    setVisibleNotifications(prev => prev.filter(n => n.id !== id));
+      return () => clearTimeout(timer);
+    }
+  }, [toastNotifications, removeToast]);
+  
+  const handleToastClick = async (notification) => {
+    // Mark as read
+    if (!notification.read) {
+      await markOneAsRead(notification._id);
+    }
+    // Navigate if there's a link
+    if (notification.link) {
+      navigate(notification.link);
+    }
+    // Remove the toast from view
+    removeToast(notification.id);
   };
 
   const getNotificationIcon = (type) => {
@@ -28,7 +45,7 @@ const NotificationSystem = () => {
   };
 
   const getNotificationStyles = (type) => {
-    const baseStyles = "border-l-4 rounded-lg shadow-lg p-4 mb-3 transition-all duration-300 transform";
+    const baseStyles = "border-l-4 rounded-lg shadow-lg p-4 mb-3 transition-all duration-300 transform cursor-pointer";
     
     switch (type) {
       case 'success':
@@ -42,14 +59,15 @@ const NotificationSystem = () => {
     }
   };
 
-  if (visibleNotifications.length === 0) return null;
+  if (toastNotifications.length === 0) return null;
 
   return (
     <div className="fixed top-4 right-4 z-50 w-80 max-w-sm space-y-2">
-      {visibleNotifications.map((notification) => (
+      {toastNotifications.map((notification) => (
         <div
-          key={notification.id}
+          key={notification.id || notification._id}
           className={getNotificationStyles(notification.type)}
+          onClick={() => handleToastClick(notification)}
         >
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
@@ -64,7 +82,10 @@ const NotificationSystem = () => {
               </div>
             </div>
             <button
-              onClick={() => removeNotification(notification.id)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent navigation when closing
+                removeToast(notification.id);
+              }}
               className="flex-shrink-0 ml-2 text-current opacity-60 hover:opacity-100 transition-opacity"
             >
               <X className="w-4 h-4" />

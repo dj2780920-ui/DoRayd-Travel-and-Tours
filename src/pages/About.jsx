@@ -177,11 +177,11 @@ const About = () => {
             <div className="relative">
               <div className="w-full h-96 bg-gray-200 rounded-2xl overflow-hidden">
                 <img
-                  src="/api/placeholder/600/400"
+                  src="https://placehold.co/600x400/e2e8f0/475569?text=DoRayd+Team"
                   alt="DoRayd Team"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = '/api/placeholder/600/400';
+                    e.target.src = 'https://placehold.co/600x400/e2e8f0/475569?text=Image+Unavailable';
                   }}
                 />
               </div>

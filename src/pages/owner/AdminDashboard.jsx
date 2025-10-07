@@ -10,7 +10,6 @@ import DataService from '../../components/services/DataService.jsx';
 import BookingCalendar from './BookingCalendar';
 import { useSocket } from '../../hooks/useSocket.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
-import NotificationBell from '../../components/shared/NotificationBell.jsx';
 
 // Re-usable helper components
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -20,7 +19,7 @@ const AdminDashboard = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useAuth();
-    const { socket, notifications, clearNotifications } = useSocket();
+    const { socket } = useSocket();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     
@@ -122,9 +121,7 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between h-16 px-4">
                         <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500"><Menu /></button>
                         <h1 className="text-xl font-bold text-slate-800">{navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Dashboard'}</h1>
-                        <div>
-                            <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
-                        </div>
+                        {/* The global notification bell is in the main Navbar, so no need for another one here */}
                     </div>
                 </header>
                 <main className="flex-1 p-6 overflow-y-auto">

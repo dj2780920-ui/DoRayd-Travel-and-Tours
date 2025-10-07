@@ -97,6 +97,7 @@ return (
       <Navbar
         onCustomerLogin={handleShowLogin}
         onStaffLogin={handleShowLogin}
+        onRegister={handleShowRegistration}
       />
       <main className="flex-grow">
         <NotificationSystem />

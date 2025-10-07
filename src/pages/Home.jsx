@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Car, 
-  MapPin, 
-  Calendar, 
-  Users, 
-  Star, 
-  CheckCircle, 
-  ArrowRight, 
-  Phone, 
-  Mail, 
+import {
+  Car,
+  MapPin,
+  Calendar,
+  Users,
+  Star,
+  CheckCircle,
+  ArrowRight,
+  Phone,
+  Mail,
   Clock,
-  CreditCard,  
+  CreditCard,
   Shield,
   Award,
   Heart,
@@ -242,7 +242,7 @@ const Home = () => {
                         alt={`${car.brand} ${car.model}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.target.src = '/api/placeholder/300/200';
+                          e.target.src = 'https://placehold.co/300x200/e2e8f0/475569?text=Image+Unavailable';
                         }}
                       />
                     ) : (
@@ -348,7 +348,7 @@ const Home = () => {
                         alt={tour.title || tour.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.target.src = '/api/placeholder/300/200';
+                          e.target.src = 'https://placehold.co/300x200/e2e8f0/475569?text=Image+Unavailable';
                         }}
                       />
                     ) : (
