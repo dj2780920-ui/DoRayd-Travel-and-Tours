@@ -47,6 +47,19 @@ const DataService = {
       throw new Error(error.response?.data?.message || 'Login failed. Please check your credentials.');
     }
   },
+  
+  socialLogin: async (provider, tokenData) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/${provider}-login`, tokenData);
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || `${provider} login failed.`);
+    }
+  },
 
   logout: () => {
     localStorage.removeItem('token');

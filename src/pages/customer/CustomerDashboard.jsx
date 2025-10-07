@@ -10,19 +10,15 @@ import {
     User,
     Heart,
     Award,
-    Upload,
-    Bell
+    Upload
 } from 'lucide-react';
 import { useAuth } from '../../components/Login.jsx';
 import { useApi } from '../../hooks/useApi.jsx';
 import DataService, { SERVER_URL } from '../../components/services/DataService.jsx';
-import { useSocket } from '../../hooks/useSocket.jsx';
-import NotificationBell from '../../components/shared/NotificationBell.jsx';
 
 const CustomerDashboard = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
-    const { notifications, clearNotifications } = useSocket();
 
     // Fetch user data
     const { data: bookingsData, loading: bookingsLoading, refetch: refetchBookings } = useApi(DataService.fetchUserBookings, [user]);
@@ -66,14 +62,9 @@ const CustomerDashboard = () => {
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Header */}
-                <div className="mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
-                        <p className="text-gray-600 mt-2">Manage your bookings, reviews, and account settings</p>
-                    </div>
-                    <div>
-                        <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
-                    </div>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
+                    <p className="text-gray-600 mt-2">Manage your bookings, reviews, and account settings</p>
                 </div>
 
                 {/* Stats Grid */}
@@ -254,37 +245,42 @@ const MyReviewsTab = ({ reviews }) => (
 const MyFeedbackTab = ({ feedback }) => (
     <div>
         <h2 className="text-2xl font-bold mb-6">My Feedback</h2>
-        <div className="space-y-4">
+        <div className="space-y-6">
             {feedback.length > 0 ? feedback.map(item => (
-                <div key={item._id} className="p-6 border rounded-lg">
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                                <Star 
-                                    key={i} 
-                                    className={`w-4 h-4 ${i < item.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
-                                />
-                            ))}
-                            <span className="ml-2 text-sm text-gray-600">({item.rating}/5)</span>
+                <div key={item._id} className="p-6 border rounded-lg bg-gray-50 shadow-sm">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star 
+                                        key={i} 
+                                        className={`w-5 h-5 ${i < item.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                                    />
+                                ))}
+                            </div>
+                            <span className="font-semibold text-gray-800">({item.rating}/5)</span>
                         </div>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
                             item.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                         }`}>
                             {item.isApproved ? 'Approved' : 'Pending'}
                         </span>
                     </div>
-                    <p className="text-gray-700">{item.comment}</p>
+                    <p className="text-gray-800 leading-relaxed mb-4">"{item.comment}"</p>
                      {item.image && (
                         <div className="mt-4">
-                            <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border" />
+                            <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border shadow-md" />
                         </div>
                     )}
-                    <p className="text-sm text-gray-500 mt-2">
-                        {new Date(item.createdAt).toLocaleDateString()}
+                    <p className="text-sm text-gray-500 mt-4">
+                        Submitted on {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
             )) : (
-                <p className="text-center text-gray-500 py-8">You haven't submitted any feedback yet.</p>
+                <div className="text-center py-12 text-gray-500">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300"/>
+                    <h3 className="text-lg font-semibold">You haven't submitted any feedback yet.</h3>
+                </div>
             )}
         </div>
     </div>
@@ -603,52 +599,53 @@ const LeaveFeedbackTab = ({ bookings, feedbackBookingIds, onFeedbackSubmit }) =>
 const PublicFeedbackTab = ({ feedback }) => (
     <div>
         <h2 className="text-2xl font-bold mb-6">Customer Feedback</h2>
-        <p className="text-gray-600 mb-6">See what our customers are saying about DoRayd Travel & Tours</p>
+        <p className="text-gray-600 mb-8">See what our customers are saying about DoRayd Travel & Tours</p>
         
-        <div className="space-y-6">
+        <div className="space-y-8">
             {feedback.length > 0 ? feedback.map(item => (
-                <div key={item._id} className="p-6 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
-                    <div className="flex items-start gap-4">
-                        <div className="bg-white p-3 rounded-full shadow-sm">
-                            <User className="w-6 h-6 text-gray-600" />
+                <div key={item._id} className="p-8 border rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+                    <div className="flex items-start gap-6">
+                        <div className="bg-blue-100 p-4 rounded-full">
+                            <User className="w-8 h-8 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <p className="font-semibold">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3">
+                                <p className="font-bold text-lg text-gray-800">
                                     {item.isAnonymous ? 'Anonymous Customer' : `${item.user?.firstName} ${item.user?.lastName}`}
                                 </p>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 mt-2 sm:mt-0">
                                     {[...Array(5)].map((_, i) => (
                                         <Star 
                                             key={i} 
-                                            className={`w-4 h-4 ${i < item.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                                            className={`w-5 h-5 ${i < item.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
                                         />
                                     ))}
                                 </div>
                             </div>
-                            <p className="text-gray-700 mb-3">{item.comment}</p>
+                            <p className="text-gray-700 text-lg leading-relaxed mb-4">"{item.comment}"</p>
                             {item.image && (
-                                <div className="mb-3">
-                                    <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border" />
+                                <div className="mb-4">
+                                    <img src={`${SERVER_URL}${item.image}`} alt="Feedback attachment" className="max-w-xs rounded-lg border shadow-md" />
                                 </div>
                             )}
-                            <p className="text-sm text-gray-500">
-                                {new Date(item.createdAt).toLocaleDateString()}
+                            <p className="text-sm text-gray-500 font-medium">
+                                {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 <span className="mx-2">•</span>
-                                {item.serviceType} service
+                                <span className="capitalize">{item.serviceType} Service</span>
                             </p>
                         </div>
                     </div>
                 </div>
             )) : (
-                <div className="text-center py-8">
-                    <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No public feedback available yet.</p>
+                <div className="text-center py-16 bg-gray-50 rounded-xl">
+                    <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-6" />
+                    <h3 className="text-xl font-semibold text-gray-700">No public feedback available yet.</h3>
                 </div>
             )}
         </div>
     </div>
 );
+
 
 const AccountSettingsTab = ({ user }) => (
     <div>

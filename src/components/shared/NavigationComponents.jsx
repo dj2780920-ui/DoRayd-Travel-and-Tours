@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+// src/components/shared/NavigationComponents.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Shield, UserCheck, Phone, Mail, MapPin, Clock, LayoutDashboard } from 'lucide-react';
+import { Menu, X, User, LogOut, Shield, UserCheck, Phone, Mail, MapPin, Clock, LayoutDashboard, Bell } from 'lucide-react';
 import { useAuth } from '../Login';
-import logo from '../../assets/logo.svg'; // Import the logo
-import NotificationBell from './NotificationBell';
+import logo from '../../assets/logo.svg';
 import { useSocket } from '../../hooks/useSocket';
 
 export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
@@ -11,10 +11,12 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
   const { notifications, clearNotifications } = useSocket();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const userMenuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -29,6 +31,9 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setNotificationOpen(false);
       }
     };
 
@@ -53,184 +58,273 @@ export const Navbar = ({ onCustomerLogin, onStaffLogin }) => {
     setUserMenuOpen(false);
   };
 
+  const unreadNotifications = notifications?.filter(n => !n.read) || [];
+
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-40">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-24 items-center">
+    <nav className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-gray-200/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-20 items-center">
+          {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity">
-              <img src={logo} alt="Do Rayd Travel and Tours Logo" className="h-16 w-auto" />
-              <span className="ml-3 text-2xl font-bold text-gray-900">Do Rayd Travel and Tours</span>
+            <Link to="/" className="flex-shrink-0 flex items-center group">
+              <img src={logo} alt="Do Rayd Travel and Tours Logo" className="h-12 w-auto transition-transform group-hover:scale-105" />
+              <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hidden sm:block">
+                Do Rayd Travel and Tours
+              </span>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center space-x-1">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors ${
-                  location.pathname === item.href ? 'text-blue-600 border-b-2 border-blue-600' : ''
+                className={`relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-300 ${
+                  location.pathname === item.href 
+                    ? 'text-blue-600 bg-blue-50' 
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
                 {item.name}
+                {location.pathname === item.href && (
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-blue-600 rounded-full"></div>
+                )}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
+          {/* User Actions */}
+          <div className="flex items-center space-x-2">
             {isAuthenticated && user ? (
-              <>
-                <NotificationBell notifications={notifications} clearNotifications={clearNotifications} />
-                <div className="relative" ref={userMenuRef}>
+              <div className="flex items-center space-x-2">
+                {/* Unified Notification Bell */}
+                <div className="relative" ref={notificationRef}>
                   <button
-                    onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
+                    onClick={() => setNotificationOpen(!notificationOpen)}
+                    className="relative p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300"
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-                      user.role === 'admin' ? 'bg-red-600' : user.role === 'employee' ? 'bg-green-600' : 'bg-blue-600'
-                    }`}>
-                      {user.role === 'admin' ? <Shield className="w-4 h-4" /> : user.role === 'employee' ? <UserCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                    </div>
-                    <span>{user.firstName || user.email}</span>
+                    <Bell className="h-5 w-5" />
+                    {unreadNotifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium animate-pulse">
+                        {unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}
+                      </span>
+                    )}
                   </button>
-                  {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      <div className="px-4 py-2 border-b border-gray-100">
-                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
-                        <p className="text-xs text-blue-600 capitalize">{user.role} Account</p>
+
+                  {/* Notification Dropdown */}
+                  {notificationOpen && (
+                    <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                          {unreadNotifications.length > 0 && (
+                            <button
+                              onClick={() => {
+                                clearNotifications();
+                                setNotificationOpen(false);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <button onClick={handleDashboardAccess} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                        <LayoutDashboard className="w-4 h-4" /> My Dashboard
-                      </button>
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                        <LogOut className="w-4 h-4" /> Logout
-                      </button>
+                      <div className="max-h-64 overflow-y-auto">
+                        {notifications && notifications.length > 0 ? (
+                          notifications.slice(0, 5).map((notification, index) => (
+                            <div
+                              key={index}
+                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                                !notification.read ? 'bg-blue-50/50' : ''
+                              }`}
+                            >
+                              <p className="text-sm text-gray-900 font-medium">{notification.title}</p>
+                              <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notification.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-8 text-center text-gray-500">
+                            <Bell className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm">No notifications</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
-              </>
-            ) : (
-              <>
-                <button onClick={onCustomerLogin} className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
-                  Customer Login
-                </button>
-                <button onClick={onStaffLogin} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                  Staff Login
-                </button>
-              </>
-            )}
-          </div>
 
-          <div className="md:hidden flex items-center">
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-700 hover:text-blue-600 p-2">
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {/* User Menu */}
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-50 transition-all duration-300"
+                  >
+                    <div className="w-9 h-9 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+                      <span className="text-white text-sm font-semibold">
+                        {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="hidden md:block text-left">
+                      <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                      <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                    </div>
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <span className="text-white font-semibold">
+                              {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                            <p className="text-xs text-gray-500">{user.email}</p>
+                            <span className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mt-1 capitalize">
+                              {user.role}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="py-2">
+                        <button
+                          onClick={handleDashboardAccess}
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <LayoutDashboard className="w-4 h-4 mr-3 text-blue-500" />
+                          Dashboard
+                        </button>
+                        
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4 mr-3" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 rounded-full transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  Get Started
+                </button>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-2 rounded-full text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
-      </div>
 
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navigation.map((item) => (
-              <Link key={item.name} to={item.href} onClick={() => setIsMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  location.pathname === item.href ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-            <div className="border-t border-gray-200 pt-3 mt-3">
-              {isAuthenticated && user ? (
-                 <div className="space-y-2">
-                    <button onClick={() => { handleDashboardAccess(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2">
-                        My Dashboard
-                    </button>
-                    <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-red-600">
-                        Logout
-                    </button>
-                 </div>
-              ) : (
-                <div className="space-y-2 px-3">
-                    <button onClick={() => { onCustomerLogin(); setIsMenuOpen(false); }} className="w-full text-left bg-blue-600 text-white px-4 py-2 rounded-lg">
-                        Customer Login/Register
-                    </button>
-                    <button onClick={() => { onStaffLogin(); setIsMenuOpen(false); }} className="w-full text-left mt-2 bg-gray-200 px-4 py-2 rounded-lg">
-                        Staff Login
-                    </button>
-                </div>
-              )}
+        {/* Mobile Navigation Menu */}
+        {isMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${
+                    location.pathname === item.href
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   );
 };
 
-
 export const Footer = () => {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer className="bg-gradient-to-r from-gray-900 to-gray-800 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center mb-4">
-              <img src={logo} alt="Do Rayd Travel and Tours Logo" className="h-16 w-auto" />
-              <span className="ml-3 text-2xl font-bold">Do Rayd Travel and Tours</span>
+              <img src={logo} alt="Logo" className="h-10 w-auto" />
+              <span className="ml-3 text-xl font-bold">Do Rayd Travel and Tours</span>
             </div>
-            <p className="text-gray-400 mb-4 max-w-md">
-              Your trusted partner for exploring the beautiful Philippines. We provide premium car rentals and exciting tour packages for unforgettable adventures.
+            <p className="text-gray-300 mb-4">
+              Your trusted partner for memorable travel experiences. Discover the Philippines with our premium car rentals and curated tours.
             </p>
+            <div className="flex space-x-4">
+              <div className="flex items-center text-gray-300">
+                <Phone className="h-4 w-4 mr-2" />
+                <span>+63 123 456 7890</span>
+              </div>
+              <div className="flex items-center text-gray-300">
+                <Mail className="h-4 w-4 mr-2" />
+                <span>info@dorayd.com</span>
+              </div>
+            </div>
           </div>
 
           {/* Quick Links */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              {[
-                { name: 'Home', href: '/' },
-                { name: 'Car Rental', href: '/cars' },
-                { name: 'Tour Packages', href: '/tours' },
-                { name: 'About Us', href: '/about' },
-                { name: 'Contact', href: '/contact' },
-              ].map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li><Link to="/" className="text-gray-300 hover:text-white transition-colors">Home</Link></li>
+              <li><Link to="/cars" className="text-gray-300 hover:text-white transition-colors">Cars</Link></li>
+              <li><Link to="/tours" className="text-gray-300 hover:text-white transition-colors">Tours</Link></li>
+              <li><Link to="/about" className="text-gray-300 hover:text-white transition-colors">About</Link></li>
+              <li><Link to="/contact" className="text-gray-300 hover:text-white transition-colors">Contact</Link></li>
             </ul>
           </div>
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
+            <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-gray-400">+63 917 123 4567</span>
+              <div className="flex items-start text-gray-300">
+                <MapPin className="h-5 w-5 mr-2 mt-0.5" />
+                <span>123 Tourism Street, Manila, Philippines</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-400" />
-                <span className="text-gray-400">info@dorayd.com</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-400" />
-                <span className="text-gray-400">Manila, Philippines</span>
+              <div className="flex items-center text-gray-300">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>24/7 Customer Support</span>
               </div>
             </div>
           </div>
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-gray-700 text-center text-gray-300">
+          <p>&copy; 2024 Do Rayd Travel and Tours. All rights reserved.</p>
         </div>
       </div>
     </footer>
