@@ -34,11 +34,14 @@ export const createNotification = async (recipients, message, link) => {
         }));
 
         if (notifications.length > 0) {
-            await Notification.insertMany(notifications);
+            const createdNotifications = await Notification.insertMany(notifications);
             console.log(`Created ${notifications.length} notifications.`);
+            return createdNotifications; // --- FIX: Return the created notifications ---
         }
+        return []; // --- FIX: Return empty array if none created ---
     } catch (error) {
         console.error('Error creating notification:', error);
+        return []; // --- FIX: Return empty array on error ---
     }
 };
 

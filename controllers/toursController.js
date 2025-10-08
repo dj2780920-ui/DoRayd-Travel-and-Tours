@@ -1,5 +1,6 @@
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
+import { createNotification } from './notificationController.js';
 
 export const getAllTours = async (req, res) => {
   try {
@@ -51,18 +52,18 @@ export const createTour = async (req, res) => {
     
     const io = req.app.get('io');
     if (io) {
-      // Notify customers about the new tour
       io.to('customer').emit('new-tour', {
           message: `New tour available: ${tour.title}`,
           link: `/tours/${tour._id}`
       });
 
-      // Notify admin if an employee added the tour
       if (req.user.role === 'employee') {
-          io.to('admin').emit('activity-log', {
-              message: `Employee ${req.user.firstName} ${req.user.lastName} added a new tour: ${tour.title}`,
-              link: '/owner/manage-tours'
-          });
+          const message = `Employee ${req.user.firstName} added a new tour: ${tour.title}`;
+          const link = '/owner/manage-tours';
+          const notifications = await createNotification({ roles: ['admin'] }, message, link);
+          if (notifications.length > 0) {
+              io.to('admin').emit('activity-log', notifications[0]);
+          }
       }
     }
 
@@ -77,13 +78,14 @@ export const updateTour = async (req, res) => {
     const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!tour) return res.status(404).json({ success: false, message: 'Tour not found' });
 
-    // Notify admin if an employee updated the tour
     const io = req.app.get('io');
     if (io && req.user.role === 'employee') {
-        io.to('admin').emit('activity-log', {
-            message: `Employee ${req.user.firstName} ${req.user.lastName} updated the tour: ${tour.title}`,
-            link: '/owner/manage-tours'
-        });
+        const message = `Employee ${req.user.firstName} updated the tour: ${tour.title}`;
+        const link = '/owner/manage-tours';
+        const notifications = await createNotification({ roles: ['admin'] }, message, link);
+        if (notifications.length > 0) {
+            io.to('admin').emit('activity-log', notifications[0]);
+        }
     }
 
     res.json({ success: true, data: tour });
@@ -97,13 +99,14 @@ export const archiveTour = async (req, res) => {
     const tour = await Tour.findByIdAndUpdate(req.params.id, { archived: true, isAvailable: false }, { new: true });
     if (!tour) return res.status(404).json({ success: false, message: 'Tour not found' });
     
-    // Notify admin if an employee archived the tour
     const io = req.app.get('io');
     if (io && req.user.role === 'employee') {
-        io.to('admin').emit('activity-log', {
-            message: `Employee ${req.user.firstName} ${req.user.lastName} archived the tour: ${tour.title}`,
-            link: '/owner/manage-tours'
-        });
+        const message = `Employee ${req.user.firstName} archived the tour: ${tour.title}`;
+        const link = '/owner/manage-tours';
+        const notifications = await createNotification({ roles: ['admin'] }, message, link);
+        if (notifications.length > 0) {
+            io.to('admin').emit('activity-log', notifications[0]);
+        }
     }
     
     res.json({ success: true, message: "Tour archived", data: tour });

@@ -6,7 +6,6 @@ import { useApi } from '../../hooks/useApi';
 
 const ManageCars = () => {
   const [showModal, setShowModal] = useState(false);
-  // ... (rest of the state declarations) ...
   const [editingCar, setEditingCar] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('active');
@@ -85,36 +84,36 @@ const ManageCars = () => {
     }
   };
 
-const handleEdit = (car) => {
-  setEditingCar(car);
-  
-  const processedImages = Array.isArray(car.images) 
-    ? car.images.map(img => {
-        if (typeof img === 'string') {
-          return { 
-            url: img, 
-            serverId: img.split('/').pop().split('.')[0],
-            name: img.split('/').pop(),
-            uploadedAt: new Date().toISOString()
-          };
-        } else {
-          return {
-            url: img.url || img,
-            serverId: img.serverId || img._id || img.url?.split('/').pop().split('.')[0],
-            name: img.name || img.url?.split('/').pop() || 'image',
-            uploadedAt: img.uploadedAt || new Date().toISOString()
-          };
-        }
-      })
-    : [];
+  const handleEdit = (car) => {
+    setEditingCar(car);
+    
+    const processedImages = Array.isArray(car.images) 
+      ? car.images.map(img => {
+          if (typeof img === 'string') {
+            return { 
+              url: img, 
+              serverId: img.split('/').pop().split('.')[0],
+              name: img.split('/').pop(),
+              uploadedAt: new Date().toISOString()
+            };
+          } else {
+            return {
+              url: img.url || img,
+              serverId: img.serverId || img._id || img.url?.split('/').pop().split('.')[0],
+              name: img.name || img.url?.split('/').pop() || 'image',
+              uploadedAt: img.uploadedAt || new Date().toISOString()
+            };
+          }
+        })
+      : [];
 
-  setFormData({
-    ...initialFormState,
-    ...car,
-    images: processedImages
-  });
-  setShowModal(true);
-};
+    setFormData({
+      ...initialFormState,
+      ...car,
+      images: processedImages
+    });
+    setShowModal(true);
+  };
   const handleArchive = async (carId) => {
     if (window.confirm('Are you sure you want to archive this car?')) {
       try {
@@ -271,7 +270,12 @@ const handleEdit = (car) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
-                  <ImageUpload onImagesChange={handleImagesChange} existingImages={formData.images} maxImages={5} />
+                  <ImageUpload 
+                    onImagesChange={handleImagesChange} 
+                    existingImages={formData.images} 
+                    maxImages={5} 
+                    category="cars"
+                  />
                 </div>
                 <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                   <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>

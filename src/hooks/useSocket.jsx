@@ -48,6 +48,7 @@ export const useSocket = () => {
 
         // This handler is for NEW, incoming notifications
         const onNotification = (data) => {
+          // FIX: Use the unique _id from the database as the primary key. Fallback to Date.now() just in case.
           const newNotif = { ...data, id: data._id || Date.now(), timestamp: new Date() };
           // Add to the main list for the bell
           setAllNotifications((prev) => [newNotif, ...prev]);
@@ -82,7 +83,13 @@ export const useSocket = () => {
         return () => {
           socket.off('connect', onConnect);
           socket.off('disconnect', onDisconnect);
-          // ... cleanup all other listeners
+          socket.off('new-booking', handleNewBooking);
+          socket.off('new-message', handleNewMessage);
+          socket.off('new-review', handleNewReview);
+          socket.off('new-user', handleNewUser);
+          socket.off('booking-update', handleBookingUpdate);
+          socket.off('new-car', handleNewCar);
+          socket.off('new-tour', handleNewTour);
         };
     } else {
         if (socket.connected) {

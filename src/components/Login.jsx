@@ -5,7 +5,7 @@ import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Shield, User, UserCheck, X } from 'lucide-react';
 import DataService from '../components/services/DataService.jsx';
 
-// --- FIX: Load IDs from Vite's import.meta.env object ---
+// --- Load IDs from Vite's import.meta.env object ---
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
 
@@ -134,6 +134,19 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
         console.warn('VITE_FACEBOOK_APP_ID is not configured in your .env file. Facebook Login will fail.');
         setError('Facebook Login is not configured by the administrator.');
     }
+    
+    const handleGoogleCallbackResponse = async (response) => {
+        setLoading(true);
+        setError('');
+        const result = await socialLogin('google', { credential: response.credential });
+        if (result.success) {
+            onClose();
+            // ... (navigation logic)
+        } else {
+            setError(result.message || "Login failed.");
+        }
+        setLoading(false);
+    };
 
     // Google Script
     const googleScriptId = 'google-gsi-script';
@@ -149,9 +162,18 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
                     client_id: GOOGLE_CLIENT_ID,
                     callback: handleGoogleCallbackResponse
                 });
+                window.google.accounts.id.renderButton(
+                    document.getElementById("googleSignInButton"),
+                    { theme: "outline", size: "large", text: "continue_with" } 
+                );
             }
         };
         document.body.appendChild(googleScript);
+    } else if (window.google && document.getElementById("googleSignInButton")) {
+        window.google.accounts.id.renderButton(
+            document.getElementById("googleSignInButton"),
+            { theme: "outline", size: "large", text: "continue_with" }
+        );
     }
 
     // Facebook Script
@@ -178,7 +200,7 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
         setIsFbSdkReady(true);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, socialLogin, onClose]);
 
   useEffect(() => {
     setIsLoginView(!showRegistration);
@@ -225,32 +247,6 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
     setLoading(false);
   };
   
-  const handleGoogleCallbackResponse = async (response) => {
-      setLoading(true);
-      setError('');
-      const result = await socialLogin('google', { credential: response.credential });
-      if (result.success) {
-          onClose();
-        switch (result.user.role) {
-          case 'admin': navigate('/owner/dashboard', { replace: true }); break;
-          case 'employee': navigate('/employee/dashboard', { replace: true }); break;
-          case 'customer': navigate('/my-bookings', { replace: true }); break;
-          default: navigate('/');
-        }
-      } else {
-          setError(result.message || "Login failed.");
-      }
-      setLoading(false);
-  };
-
-  const handleGoogleLoginClick = () => {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.prompt();
-      } else {
-        setError("Google Login is not ready or is misconfigured. Please try again in a moment.");
-      }
-  };
-
   const handleFacebookLoginClick = () => {
       if (!isFbSdkReady || !window.FB) {
         setError("Facebook Login is not ready or is misconfigured. Please try again in a moment.");
@@ -341,18 +337,20 @@ export const UnifiedLoginPortal = ({ isOpen, onClose, showRegistration = false }
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300"></div></div>
                   <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or continue with</span></div>
                 </div>
-                <div className="space-y-3">
-                  <button onClick={handleGoogleLoginClick} type="button" className="w-full flex justify-center items-center gap-3 py-3 border rounded-lg text-gray-700 font-medium hover:bg-gray-50">
-                      <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/5a73199f1bb1d3ea89b40297fa0cb3c5a5d23d64a09d3c0065afa4619abb32ce?apiKey=597363a3080546f9b072bf59bebbfd17&" alt="Google" className="w-5 h-5"/> Continue with Google
-                  </button>
+                {/* --- FIX: Updated the social login buttons section for alignment --- */}
+                <div className="space-y-3 flex flex-col items-center">
+                  <div id="googleSignInButton" className="flex justify-center"></div>
+                  
                   <button
                     onClick={handleFacebookLoginClick}
                     type="button"
                     disabled={!isFbSdkReady}
-                    className="w-full flex justify-center items-center gap-3 py-3 border rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="h-[40px] px-6 flex justify-center items-center gap-3 border rounded-full text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                      <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/3feb9724a7eb37edc68e698d2bf9cfdafff2e78a2d0733da73a89c1beed3d397?apiKey=597363a3080546f9b072bf59bebbfd17&" alt="Facebook" className="w-5 h-5"/>
-                      {isFbSdkReady ? 'Continue with Facebook' : 'Loading Facebook...'}
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" alt="Facebook" className="w-5 h-5"/>
+                      <span className="text-sm">
+                        {isFbSdkReady ? 'Continue with Facebook' : 'Loading Facebook...'}
+                      </span>
                   </button>
                 </div>
               </>

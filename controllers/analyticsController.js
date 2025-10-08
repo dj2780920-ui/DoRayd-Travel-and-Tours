@@ -219,13 +219,6 @@ export const getDashboardAnalytics = async (req, res) => {
     const conversionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
     const avgRevenuePerBooking = completedBookings > 0 ? totalRevenue / completedBookings : 0;
 
-    console.log('Analytics Data:', {
-      dailyCount: dailyRevenue.length,
-      monthlyCount: monthlyRevenue.length,
-      quarterlyCount: quarterlyRevenue.length,
-      yearlyCount: yearlyRevenue.length
-    });
-
     res.json({
       success: true,
       data: {
@@ -256,7 +249,6 @@ export const getDashboardAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching dashboard analytics:', error);
     res.status(500).json({
       success: false,
       message: 'Server Error',

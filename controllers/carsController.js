@@ -1,4 +1,5 @@
 import Car from '../models/Car.js';
+import { createNotification } from './notificationController.js'; 
 
 export const getAllCars = async (req, res) => {
   try {
@@ -41,18 +42,18 @@ export const createCar = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      // Notify customers about the new car
       io.to('customer').emit('new-car', {
           message: `New car available: ${car.brand} ${car.model}`,
           link: `/cars/${car._id}`
       });
 
-      // Notify admin if an employee added the car
       if (req.user.role === 'employee') {
-          io.to('admin').emit('activity-log', {
-              message: `Employee ${req.user.firstName} ${req.user.lastName} added a new car: ${car.brand} ${car.model}`,
-              link: '/owner/manage-cars'
-          });
+          const message = `Employee ${req.user.firstName} added a new car: ${car.brand} ${car.model}`;
+          const link = '/owner/manage-cars';
+          const notifications = await createNotification({ roles: ['admin'] }, message, link);
+          if (notifications.length > 0) {
+              io.to('admin').emit('activity-log', notifications[0]);
+          }
       }
     }
     
@@ -67,13 +68,14 @@ export const updateCar = async (req, res) => {
     const car = await Car.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
 
-    // Notify admin if an employee updated the car
     const io = req.app.get('io');
     if (io && req.user.role === 'employee') {
-        io.to('admin').emit('activity-log', {
-            message: `Employee ${req.user.firstName} ${req.user.lastName} updated the car: ${car.brand} ${car.model}`,
-            link: '/owner/manage-cars'
-        });
+        const message = `Employee ${req.user.firstName} updated the car: ${car.brand} ${car.model}`;
+        const link = '/owner/manage-cars';
+        const notifications = await createNotification({ roles: ['admin'] }, message, link);
+        if (notifications.length > 0) {
+            io.to('admin').emit('activity-log', notifications[0]);
+        }
     }
 
     res.json({ success: true, data: car });
@@ -87,13 +89,14 @@ export const archiveCar = async (req, res) => {
     const car = await Car.findByIdAndUpdate(req.params.id, { archived: true, isAvailable: false }, { new: true });
     if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
 
-    // Notify admin if an employee archived the car
     const io = req.app.get('io');
     if (io && req.user.role === 'employee') {
-        io.to('admin').emit('activity-log', {
-            message: `Employee ${req.user.firstName} ${req.user.lastName} archived the car: ${car.brand} ${car.model}`,
-            link: '/owner/manage-cars'
-        });
+        const message = `Employee ${req.user.firstName} archived the car: ${car.brand} ${car.model}`;
+        const link = '/owner/manage-cars';
+        const notifications = await createNotification({ roles: ['admin'] }, message, link);
+        if (notifications.length > 0) {
+            io.to('admin').emit('activity-log', notifications[0]);
+        }
     }
 
     res.json({ success: true, message: "Car archived successfully", data: car });

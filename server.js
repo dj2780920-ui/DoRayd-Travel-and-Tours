@@ -44,8 +44,8 @@ const PORT = process.env.PORT || 5000;
 const corsOptions = {
   origin: [
     process.env.CLIENT_URL || 'http://localhost:3000', 
-    'https://localhost:3000', 
-    'https://accounts.google.com' // Allow requests from Google's auth service
+    'https://localhost:3000', // <-- ADD THIS LINE
+    'https://accounts.google.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true,

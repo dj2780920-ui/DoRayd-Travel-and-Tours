@@ -1,3 +1,5 @@
+import { createNotification } from './notificationController.js';
+
 // This is a simulation. In a real app, this would be a Mongoose model.
 let contentStore = {
     mission: { title: 'Our Mission', content: 'To provide exceptional travel experiences...' },
@@ -23,7 +25,7 @@ export const getContentByType = (req, res) => {
   res.json({ success: true, data: content });
 };
 
-export const updateContent = (req, res) => {
+export const updateContent = async (req, res) => {
   const { type } = req.params;
   const { title, content } = req.body;
   if (!contentStore[type]) {
@@ -34,5 +36,16 @@ export const updateContent = (req, res) => {
     content: content || contentStore[type].content,
     updatedAt: new Date().toISOString()
   };
+
+  const io = req.app.get('io');
+  if (io && req.user.role === 'employee') {
+      const message = `Employee ${req.user.firstName} updated the '${type}' content.`;
+      const link = '/owner/content-management';
+      const notifications = await createNotification({ roles: ['admin'] }, message, link);
+      if (notifications && notifications.length > 0) {
+          io.to('admin').emit('activity-log', notifications[0]);
+      }
+  }
+
   res.json({ success: true, message: 'Content updated successfully', data: contentStore[type] });
 };

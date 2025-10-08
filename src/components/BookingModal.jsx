@@ -5,10 +5,10 @@ import { X, Calendar, Users, Upload, CheckCircle } from 'lucide-react';
 import DataService, { SERVER_URL } from './services/DataService.jsx';
 import CalendarBooking from './CalendarBooking.jsx';
 import DropoffMap from './DropoffMap.jsx';
-import { useAuth } from './Login.jsx'; // UPDATED: This line was missing and has been added
+import { useAuth } from './Login.jsx';
 
 const BookingModal = ({ isOpen, onClose, item, itemType }) => {
-  const { user } = useAuth(); // This line will now work correctly
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -115,127 +115,111 @@ const BookingModal = ({ isOpen, onClose, item, itemType }) => {
   };
   
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setSubmitError('');
-  
-  // Validation: Personal Information
-  if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
-    return setSubmitError('Please fill in all your personal information.');
-  }
-  
-  // Validation: Car-specific
-  if (itemType === 'car') {
-    if (!formData.startDate || !formData.time || formData.numberOfDays < 1) {
-      return setSubmitError('Please select a start date, time, and number of days.');
-    }
-    if (formData.deliveryMethod === 'pickup' && !formData.pickupLocation) {
-      return setSubmitError('Please select a pickup location.');
-    }
-    if (formData.deliveryMethod === 'dropoff' && !formData.dropoffLocation) {
-      return setSubmitError('Please select a drop-off location on the map.');
-    }
-  }
-  
-  // Validation: Tour-specific
-  if (itemType === 'tour') {
-    if (!formData.startDate) {
-      return setSubmitError('Tour date is missing. Please contact support.');
-    }
-    if (!item.endDate) {
-      return setSubmitError('Tour end date is missing. Please contact support.');
-    }
-  }
-  
-  // Validation: Payment
-  if (!formData.paymentProof) {
-    return setSubmitError('Please upload your proof of payment.');
-  }
-  if (!formData.paymentReference) {
-    return setSubmitError('Please enter your payment reference number.');
-  }
-  if (!formData.amountPaid) {
-    return setSubmitError('Please enter the amount you paid.');
-  }
-  if (!formData.agreedToTerms) {
-    return setSubmitError('You must agree to the terms and conditions to proceed.');
-  }
-
-  setSubmitting(true);
-
-  try {
-    const bookingData = new FormData();
+    e.preventDefault();
+    setSubmitError('');
     
-    // Calculate dates
-    const fullStartDate = combineDateAndTime(formData.startDate, formData.time);
-    const fullEndDate = calculatedEndDate ? calculatedEndDate.toISOString() : fullStartDate;
-
-    // Required fields - Add these first
-    bookingData.append('startDate', fullStartDate);
-    bookingData.append('endDate', fullEndDate);
-    bookingData.append('firstName', formData.firstName);
-    bookingData.append('lastName', formData.lastName);
-    bookingData.append('email', formData.email);
-    bookingData.append('phone', formData.phone);
-    bookingData.append('numberOfGuests', formData.numberOfGuests);
-    bookingData.append('agreedToTerms', formData.agreedToTerms);
-    bookingData.append('paymentReference', formData.paymentReference);
-    bookingData.append('amountPaid', formData.amountPaid);
-    bookingData.append('itemId', item._id);
-    bookingData.append('itemType', itemType);
-    bookingData.append('totalPrice', totalPrice);
-    bookingData.append('itemName', itemType === 'car' ? `${item.brand} ${item.model}` : item.title);
-    
-    // Payment proof file
-    if (formData.paymentProof) {
-      bookingData.append('paymentProof', formData.paymentProof);
+    // Validation: Personal Information
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
+      return setSubmitError('Please fill in all your personal information.');
     }
     
-    // Optional fields - Only append if they have values
-    if (formData.specialRequests) {
-      bookingData.append('specialRequests', formData.specialRequests);
+    // Validation: Car-specific
+    if (itemType === 'car') {
+      if (!formData.startDate || !formData.time || formData.numberOfDays < 1) {
+        return setSubmitError('Please select a start date, time, and number of days.');
+      }
+      // --- FIX: Added validation for pickup location ---
+      if (formData.deliveryMethod === 'pickup' && !formData.pickupLocation) {
+        return setSubmitError('Please select a pickup location.');
+      }
+      if (formData.deliveryMethod === 'dropoff' && !formData.dropoffLocation) {
+        return setSubmitError('Please select a drop-off location on the map.');
+      }
     }
     
-    if (formData.deliveryMethod) {
-      bookingData.append('deliveryMethod', formData.deliveryMethod);
+    // Validation: Tour-specific
+    if (itemType === 'tour') {
+      if (!formData.startDate) {
+        return setSubmitError('Tour date is missing. Please contact support.');
+      }
+      if (!item.endDate) {
+        return setSubmitError('Tour end date is missing. Please contact support.');
+      }
     }
     
-    if (formData.pickupLocation) {
-      bookingData.append('pickupLocation', formData.pickupLocation);
+    // Validation: Payment
+    if (!formData.paymentProof) {
+      return setSubmitError('Please upload your proof of payment.');
     }
-    
-    if (formData.dropoffLocation) {
-      bookingData.append('dropoffLocation', formData.dropoffLocation);
+    if (!formData.paymentReference) {
+      return setSubmitError('Please enter your payment reference number.');
     }
-    
-    if (formData.dropoffCoordinates) {
-      bookingData.append('dropoffCoordinates', JSON.stringify(formData.dropoffCoordinates));
+    if (!formData.amountPaid) {
+      return setSubmitError('Please enter the amount you paid.');
     }
-    
-    // Car-specific field
-    if (itemType === 'car' && formData.numberOfDays) {
-      bookingData.append('numberOfDays', formData.numberOfDays);
+    if (!formData.agreedToTerms) {
+      return setSubmitError('You must agree to the terms and conditions to proceed.');
     }
 
-    // Debug: Log what we're sending (remove in production)
-    console.log('Sending booking data:');
-    for (let pair of bookingData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
-    }
+    setSubmitting(true);
 
-    const result = await DataService.createBooking(bookingData);
-    
-    if (result.success) {
-      setSubmitSuccess(true);
-    } else {
-      throw new Error(result.message || 'Booking failed.');
+    try {
+      const bookingData = new FormData();
+      
+      const fullStartDate = combineDateAndTime(formData.startDate, formData.time);
+      const fullEndDate = calculatedEndDate ? calculatedEndDate.toISOString() : fullStartDate;
+
+      bookingData.append('startDate', fullStartDate);
+      bookingData.append('endDate', fullEndDate);
+      bookingData.append('firstName', formData.firstName);
+      bookingData.append('lastName', formData.lastName);
+      bookingData.append('email', formData.email);
+      bookingData.append('phone', formData.phone);
+      bookingData.append('numberOfGuests', formData.numberOfGuests);
+      bookingData.append('agreedToTerms', formData.agreedToTerms);
+      bookingData.append('paymentReference', formData.paymentReference);
+      bookingData.append('amountPaid', formData.amountPaid);
+      bookingData.append('itemId', item._id);
+      bookingData.append('itemType', itemType);
+      bookingData.append('totalPrice', totalPrice);
+      bookingData.append('itemName', itemType === 'car' ? `${item.brand} ${item.model}` : item.title);
+      
+      if (formData.paymentProof) {
+        bookingData.append('paymentProof', formData.paymentProof);
+      }
+      if (formData.specialRequests) {
+        bookingData.append('specialRequests', formData.specialRequests);
+      }
+      if (formData.deliveryMethod) {
+        bookingData.append('deliveryMethod', formData.deliveryMethod);
+      }
+      if (formData.pickupLocation) {
+        bookingData.append('pickupLocation', formData.pickupLocation);
+      }
+      if (formData.dropoffLocation) {
+        bookingData.append('dropoffLocation', formData.dropoffLocation);
+      }
+      if (formData.dropoffCoordinates) {
+        bookingData.append('dropoffCoordinates', JSON.stringify(formData.dropoffCoordinates));
+      }
+      if (itemType === 'car' && formData.numberOfDays) {
+        bookingData.append('numberOfDays', formData.numberOfDays);
+      }
+
+      const result = await DataService.createBooking(bookingData);
+      
+      if (result.success) {
+        setSubmitSuccess(true);
+      } else {
+        throw new Error(result.message || 'Booking failed.');
+      }
+    } catch (error) {
+      console.error('Booking submission error:', error);
+      setSubmitError(error.message || 'An error occurred while submitting your booking.');
+    } finally {
+      setSubmitting(false);
     }
-  } catch (error) {
-    console.error('Booking submission error:', error);
-    setSubmitError(error.message || 'An error occurred while submitting your booking.');
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   const formatPrice = (price) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(price);
   
@@ -248,6 +232,10 @@ const BookingModal = ({ isOpen, onClose, item, itemType }) => {
   };
 
   if (!isOpen) return null;
+  
+  const qrCodeSrc = paymentQR 
+    ? (paymentQR.startsWith('http') ? paymentQR : `${SERVER_URL}${paymentQR.startsWith('/') ? '' : '/'}${paymentQR}`)
+    : '';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -346,7 +334,7 @@ const BookingModal = ({ isOpen, onClose, item, itemType }) => {
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <h3 className="font-semibold mb-3 text-blue-800">Payment Details</h3>
                     <div className="flex flex-col items-center">
-                        {paymentQR ? <img src={`${SERVER_URL}${paymentQR}`} alt="Payment QR Code" className="w-48 h-48 object-contain mb-4 border rounded-md" /> : <p className="text-sm text-gray-500 mb-4">QR code not available.</p>}
+                        {qrCodeSrc ? <img src={qrCodeSrc} alt="Payment QR Code" className="w-48 h-48 object-contain mb-4 border rounded-md" /> : <p className="text-sm text-gray-500 mb-4">QR code not available.</p>}
                         <div className="w-full space-y-4">
                           <input type="text" placeholder="Payment Reference Number *" required value={formData.paymentReference} onChange={(e) => setFormData({ ...formData, paymentReference: e.target.value })} className="w-full p-2 border rounded-md"/>
                           <input type="number" placeholder="Amount Paid *" required value={formData.amountPaid} onChange={(e) => setFormData({ ...formData, amountPaid: e.target.value })} className="w-full p-2 border rounded-md"/>

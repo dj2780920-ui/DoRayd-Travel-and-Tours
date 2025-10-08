@@ -6,7 +6,36 @@ import { createNotification } from './notificationController.js';
 // Submit a review for a specific item (car/tour)
 export const submitReview = async (req, res) => {
     try {
-        // ... existing logic to check booking and create review
+        const { bookingId, rating, comment, isAnonymous } = req.body;
+
+        // --- FIX: Add validation to prevent server errors ---
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ success: false, message: 'Booking not found.' });
+        }
+        if (booking.status !== 'completed') {
+            return res.status(400).json({ success: false, message: 'You can only review completed bookings.' });
+        }
+        if (!booking.user || booking.user.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'You can only review your own bookings.' });
+        }
+        const existingReview = await Review.findOne({ booking: bookingId, type: 'review' });
+        if (existingReview) {
+            return res.status(400).json({ success: false, message: 'You have already reviewed this booking.' });
+        }
+        // --- END FIX ---
+
+        const review = new Review({
+            user: req.user.id,
+            booking: bookingId,
+            item: booking.itemId,
+            itemModel: booking.itemModel,
+            type: 'review',
+            rating,
+            comment,
+            isAnonymous: isAnonymous || false,
+        });
+        
         await review.save();
         
         const io = req.app.get('io');
@@ -17,7 +46,6 @@ export const submitReview = async (req, res) => {
                 review
             };
             io.to('admin').to('employee').emit('new-review', notification);
-            // --- SAVE NOTIFICATION TO DB ---
             await createNotification(
               { roles: ['admin', 'employee'] },
               notification.message,
@@ -37,7 +65,6 @@ export const submitFeedback = async (req, res) => {
     try {
         const { bookingId, rating, comment, isAnonymous } = req.body;
 
-        // Check if booking exists and is completed
         const booking = await Booking.findById(bookingId);
         if (!booking) {
             return res.status(404).json({ success: false, message: 'Booking not found.' });
@@ -45,12 +72,10 @@ export const submitFeedback = async (req, res) => {
         if (booking.status !== 'completed') {
             return res.status(400).json({ success: false, message: 'You can only provide feedback for completed bookings.' });
         }
-        // FIX: Ensure booking.user exists before checking the ID
         if (!booking.user || booking.user.toString() !== req.user.id) {
             return res.status(403).json({ success: false, message: 'You can only provide feedback for your own bookings.' });
         }
 
-        // Check if user already provided feedback for this booking
         const existingFeedback = await Feedback.findOne({ booking: bookingId });
         if (existingFeedback) {
             return res.status(400).json({ success: false, message: 'You have already provided feedback for this booking.' });
@@ -99,7 +124,7 @@ export const getPublicFeedback = async (req, res) => {
         const feedback = await Feedback.find({ isApproved: true })
             .populate('user', 'firstName lastName')
             .sort({ createdAt: -1 })
-            .limit(20); // Limit to recent 20 feedback
+            .limit(20);
 
         res.json({ success: true, data: feedback });
     } catch (error) {
@@ -173,16 +198,6 @@ export const approveReview = async (req, res) => {
         if (!review) {
             return res.status(404).json({ success: false, message: 'Review not found.' });
         }
-
-        // Notify admin if an employee approved the review
-        const io = req.app.get('io');
-        if (io && req.user.role === 'employee') {
-            io.to('admin').emit('activity-log', {
-                message: `Employee ${req.user.firstName} ${req.user.lastName} approved a review.`,
-                link: '/owner/manage-reviews'
-            });
-        }
-
         res.json({ success: true, data: review });
     } catch (error) {
         console.error('Error approving review:', error);
@@ -201,16 +216,6 @@ export const approveFeedback = async (req, res) => {
         if (!feedback) {
             return res.status(404).json({ success: false, message: 'Feedback not found.' });
         }
-
-        // Notify admin if an employee approved the feedback
-        const io = req.app.get('io');
-        if (io && req.user.role === 'employee') {
-            io.to('admin').emit('activity-log', {
-                message: `Employee ${req.user.firstName} ${req.user.lastName} approved feedback.`,
-                link: '/owner/manage-feedback'
-            });
-        }
-
         res.json({ success: true, data: feedback });
     } catch (error) {
         console.error('Error approving feedback:', error);
@@ -229,16 +234,6 @@ export const disapproveReview = async (req, res) => {
         if (!review) {
             return res.status(404).json({ success: false, message: 'Review not found.' });
         }
-
-        // Notify admin if an employee disapproved the review
-        const io = req.app.get('io');
-        if (io && req.user.role === 'employee') {
-            io.to('admin').emit('activity-log', {
-                message: `Employee ${req.user.firstName} ${req.user.lastName} disapproved a review.`,
-                link: '/owner/manage-reviews'
-            });
-        }
-
         res.json({ success: true, data: review });
     } catch (error) {
         console.error('Error disapproving review:', error);
@@ -257,16 +252,6 @@ export const disapproveFeedback = async (req, res) => {
         if (!feedback) {
             return res.status(404).json({ success: false, message: 'Feedback not found.' });
         }
-        
-        // Notify admin if an employee disapproved the feedback
-        const io = req.app.get('io');
-        if (io && req.user.role === 'employee') {
-            io.to('admin').emit('activity-log', {
-                message: `Employee ${req.user.firstName} ${req.user.lastName} disapproved feedback.`,
-                link: '/owner/manage-feedback'
-            });
-        }
-
         res.json({ success: true, data: feedback });
     } catch (error) {
         console.error('Error disapproving feedback:', error);
